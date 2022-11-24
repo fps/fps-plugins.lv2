@@ -10,20 +10,20 @@ static void plugin_connect_port_desc(LV2_Handle instance, uint32_t port, void *d
 {
     if (plugin_callbacks.connect_port) 
     { 
-        plugin_callbacks.connect_port(instance, port, data_location); 
+        plugin_callbacks.connect_port((plugin_t *)instance, port, data_location); 
     } 
     else 
     {
         if (port < 8) 
         {
-            ((struct plugin*)instance)->ports[port] = (float*)data_location;
+            ((plugin_t*)instance)->ports[port] = (float*)data_location;
         }
     }
 }
 
 static LV2_Handle plugin_instantiate_desc(const LV2_Descriptor *descriptor, double sample_rate, const char *bundle_path, const LV2_Feature *const *features)
 {
-    struct plugin *instance = malloc(sizeof(struct plugin));
+    plugin_t *instance = (plugin_t*)malloc(sizeof(struct plugin));
     memset(instance, 0,  sizeof(struct plugin));
     if (plugin_callbacks.instantiate)
     {
@@ -34,21 +34,19 @@ static LV2_Handle plugin_instantiate_desc(const LV2_Descriptor *descriptor, doub
 
 static void plugin_cleanup_desc(LV2_Handle instance)
 {
-    struct plugin *tinstance = (struct plugin*)instance;
-
     if (plugin_callbacks.cleanup)
     {
-        plugin_callbacks.cleanup(tinstance);
+        plugin_callbacks.cleanup((plugin_t*)instance);
     }
 
-    free(tinstance);
+    free(instance);
 }
 
 static void plugin_activate_desc(LV2_Handle instance)
 {
     if (plugin_callbacks.activate)
     {
-        plugin_callbacks.activate(instance);
+        plugin_callbacks.activate((plugin_t*)instance);
     }
 }
 
@@ -56,26 +54,24 @@ static void plugin_deactivate_desc(LV2_Handle instance)
 {
     if (plugin_callbacks.deactivate)
     {
-        plugin_callbacks.deactivate(instance);
+        plugin_callbacks.deactivate((plugin_t*)instance);
     }
 }
 
 static void plugin_run_desc(LV2_Handle instance, uint32_t sample_count)
 {
-    struct plugin *tinstance = (struct plugin*)instance;
-
     if (plugin_callbacks.run)
     {
-        const struct plugin_port_in in = { .data = tinstance->ports[0] };
-        const struct plugin_port_out out = { .data = tinstance->ports[1] };
-        const struct plugin_port_t1 t1 = { .data = tinstance->ports[2] };
-        const struct plugin_port_t2 t2 = { .data = tinstance->ports[3] };
-        const struct plugin_port_strength strength = { .data = tinstance->ports[4] };
-        const struct plugin_port_delay delay = { .data = tinstance->ports[5] };
-        const struct plugin_port_maxratio maxratio = { .data = tinstance->ports[6] };
-        const struct plugin_port_minratio minratio = { .data = tinstance->ports[7] };
+        const struct plugin_port_in in = { .data = ((plugin_t*)instance)->ports[0] };
+        const struct plugin_port_out out = { .data = ((plugin_t*)instance)->ports[1] };
+        const struct plugin_port_t1 t1 = { .data = ((plugin_t*)instance)->ports[2] };
+        const struct plugin_port_t2 t2 = { .data = ((plugin_t*)instance)->ports[3] };
+        const struct plugin_port_strength strength = { .data = ((plugin_t*)instance)->ports[4] };
+        const struct plugin_port_delay delay = { .data = ((plugin_t*)instance)->ports[5] };
+        const struct plugin_port_maxratio maxratio = { .data = ((plugin_t*)instance)->ports[6] };
+        const struct plugin_port_minratio minratio = { .data = ((plugin_t*)instance)->ports[7] };
 
-        plugin_callbacks.run(tinstance, sample_count, in, out, t1, t2, strength, delay, maxratio, minratio);
+        plugin_callbacks.run((plugin_t*)instance, sample_count, in, out, t1, t2, strength, delay, maxratio, minratio);
     }
 }
 
