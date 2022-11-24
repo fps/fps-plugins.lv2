@@ -1,0 +1,47 @@
+@prefix lv2:  <http://lv2plug.in/ns/lv2core#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix doap: <http://usefulinc.com/ns/doap#> .
+
+<http://fps.io/plugins/stereospread-mono2stereo> a lv2:Plugin ;
+  doap:name "stereo spreader (mono to stereo)";
+  doap:license <http://usefulinc.com/doap/licenses/gpl> ;
+  doap:description "Applies a random phase conjugate pair of filters to the generated left and right channels" ; 
+  lv2:binary <stereospread.so> ;
+  lv2:optionalFeature lv2:hardRTCapable ;
+  lv2:port [
+    a lv2:AudioPort ;
+    a lv2:InputPort ;
+    lv2:index 0 ;
+    lv2:symbol "in" ;
+    lv2:name "In"
+  ] , [
+    a lv2:AudioPort ;
+    a lv2:OutputPort ;
+    lv2:index 1 ;
+    lv2:symbol "outl" ;
+    lv2:name "Out Left"
+  ] , [
+    a lv2:AudioPort ;
+    a lv2:OutputPort ;
+    lv2:index 2 ;
+    lv2:symbol "outr" ;
+    lv2:name "Out Right"
+  ]  , [
+    a lv2:InputPort ;
+    a lv2:ControlPort ;
+    lv2:index 3 ;
+    lv2:symbol "drywet" ;
+    lv2:name "Dry/Wet";
+    lv2:default 1 ;
+    lv2:minimum 0 ;
+    lv2:maximum 1 ;
+  ]  , [
+    a lv2:InputPort ;
+    a lv2:ControlPort ;
+    lv2:index 4 ;
+    lv2:symbol "length" ;
+    lv2:name "Filter length (caution: uses cpu!)";
+    lv2:default 3 ;
+    lv2:minimum 0 ;
+    lv2:maximum 8 ;
+  ]  .

@@ -1,0 +1,77 @@
+@prefix lv2:  <http://lv2plug.in/ns/lv2core#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix doap: <http://usefulinc.com/ns/doap#> .
+
+<http://fps.io/plugins/relative_dynamics> a lv2:Plugin ;
+  doap:name "Relative dynamics";
+  doap:license <http://usefulinc.com/doap/licenses/gpl> ;
+  doap:description "Determines the ratio of two lowpass-filtered envelopes and applies the inverse as scaling factor" ;
+  lv2:binary <dynamics.so> ;
+  lv2:optionalFeature lv2:hardRTCapable ;
+  lv2:port [
+    a lv2:AudioPort ;
+    a lv2:InputPort ;
+    lv2:index 0 ;
+    lv2:symbol "in" ;
+    lv2:name "In"
+  ] , [
+    a lv2:AudioPort ;
+    a lv2:OutputPort ;
+    lv2:index 1 ;
+    lv2:symbol "out" ;
+    lv2:name "Out"
+  ] , [
+    a lv2:InputPort ;
+    a lv2:ControlPort ;
+    lv2:index 2 ;
+    lv2:symbol "t1" ;
+    lv2:name "Time constant 1 (ms)";
+    lv2:default 10 ;
+    lv2:minimum 1 ;
+    lv2:maximum 1000 ;
+  ]  , [
+    a lv2:InputPort ;
+    a lv2:ControlPort ;
+    lv2:index 3 ;
+    lv2:symbol "t2" ;
+    lv2:name "Time constant 2 (ms)";
+    lv2:default 100 ;
+    lv2:minimum 1 ;
+    lv2:maximum 10000 ;
+  ]  , [
+    a lv2:InputPort ;
+    a lv2:ControlPort ;
+    lv2:index 4 ;
+    lv2:symbol "strength" ;
+    lv2:name "Strength";
+    lv2:default 0.5 ;
+    lv2:minimum -1 ;
+    lv2:maximum 1 ;
+  ]  , [
+    a lv2:InputPort ;
+    a lv2:ControlPort ;
+    lv2:index 5 ;
+    lv2:symbol "delay" ;
+    lv2:name "Delay (lookahead, ms)";
+    lv2:default 0 ;
+    lv2:minimum 0 ;
+    lv2:maximum 1000 ;
+  ]  , [
+    a lv2:InputPort ;
+    a lv2:ControlPort ;
+    lv2:index 6 ;
+    lv2:symbol "maxratio" ;
+    lv2:name "Maximum ratio";
+    lv2:default 2 ;
+    lv2:minimum 1 ;
+    lv2:maximum 100 ;
+  ]  , [
+    a lv2:InputPort ;
+    a lv2:ControlPort ;
+    lv2:index 7 ;
+    lv2:symbol "minratio" ;
+    lv2:name "Minimum ratio";
+    lv2:default 0.5 ;
+    lv2:minimum 0.01 ;
+    lv2:maximum 1 ;
+  ]    .

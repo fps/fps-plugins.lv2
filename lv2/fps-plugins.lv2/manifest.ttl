@@ -1,0 +1,15 @@
+@prefix lv2: <http://lv2plug.in/ns/lv2core#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+<http://fps.io/plugins/relative_dynamics>
+    a lv2:Plugin ;
+    rdfs:seeAlso <dynamics.ttl> .
+
+<http://fps.io/plugins/stereospread-mono2stereo>
+    a lv2:Plugin ;
+    rdfs:seeAlso <stereospread-mono2stereo.ttl> .
+
+<http://fps.io/plugins/stereospread-stereo2stereo>
+    a lv2:Plugin ;
+    rdfs:seeAlso <stereospread-stereo2stereo.ttl> .
+
