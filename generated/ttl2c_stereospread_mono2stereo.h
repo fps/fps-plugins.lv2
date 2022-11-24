@@ -45,10 +45,10 @@ typedef struct plugin_callbacks
 {
     struct plugin* (*const instantiate)(plugin_t *instance, double sample_rate, const char *bundle_path, const LV2_Feature *const *features);
     void (*const connect_port)(plugin_t *instance, uint32_t port, void *data_location);
-    void(* const activate)(plugin_t *instance);
-    void(* const run)(plugin_t *instance, uint32_t sample_count, const plugin_port_in_t in, const plugin_port_outl_t outl, const plugin_port_outr_t outr, const plugin_port_drywet_t drywet, const plugin_port_length_t length);
-    void(*const deactivate)(plugin_t *instance);
-    void(*const cleanup)(plugin_t *instance);
+    void (*const activate)(plugin_t *instance);
+    void (*const run)(plugin_t *instance, uint32_t sample_count, const plugin_port_in_t in, const plugin_port_outl_t outl, const plugin_port_outr_t outr, const plugin_port_drywet_t drywet, const plugin_port_length_t length);
+    void (*const deactivate)(plugin_t *instance);
+    void (*const cleanup)(plugin_t *instance);
     const void *(*const extension_data)(const char *uri);
 } plugin_callbacks_t;
 
