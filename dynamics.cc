@@ -42,8 +42,8 @@ static void run(
 {
     plugin_state_t *tinstance = instance->state;
 
-    const float a1 = 1.0f - expf((-1.0f/tinstance->samplerate) / (t1.data[0] / 1000.0f));
-    const float a2 = 1.0f - expf((-1.0f/tinstance->samplerate) / (t2.data[0] / 1000.0f));
+    const float a1 = 1.0f - expf((-1.0f/tinstance->samplerate) / (t1.data / 1000.0f));
+    const float a2 = 1.0f - expf((-1.0f/tinstance->samplerate) / (t2.data / 1000.0f));
 
     for(uint32_t sample_index = 0; sample_index < nframes; ++sample_index)
     {
@@ -51,20 +51,20 @@ static void run(
         tinstance->abs2 = a2 * fabs(in.data[sample_index]) + (1.0f - a2) * tinstance->abs2;
 
         const float r = (EPSILON + tinstance->abs1) / (EPSILON + tinstance->abs2);
-        float scale = powf(1.0f / r, strength.data[0]);
+        float scale = powf(1.0f / r, strength.data);
 
-        if (scale > maxratio.data[0]) {
-            scale = maxratio.data[0];
+        if (scale > maxratio.data) {
+            scale = maxratio.data;
         }
 
-        if (scale < minratio.data[0]) {
-            scale = minratio.data[0];
+        if (scale < minratio.data) {
+            scale = minratio.data;
         }
 
 
         tinstance->buffer[tinstance->buffer_head] = in.data[sample_index];
         
-        int buffer_tail = tinstance->buffer_head - tinstance->samplerate * (delay.data[0] / 1000);
+        int buffer_tail = tinstance->buffer_head - tinstance->samplerate * (delay.data / 1000);
         if (buffer_tail < 0) {
             buffer_tail += 2 * tinstance->samplerate;
         }

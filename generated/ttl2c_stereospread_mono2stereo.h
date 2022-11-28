@@ -20,29 +20,28 @@ enum plugin_port_indices {
 };
 
 typedef struct plugin_port_in {
-    float *data;
+    float const * data;
 } plugin_port_in_t;
 
 typedef struct plugin_port_outl {
-    float *data;
+    float  * data;
 } plugin_port_outl_t;
 
 typedef struct plugin_port_outr {
-    float *data;
+    float  * data;
 } plugin_port_outr_t;
 
 typedef struct plugin_port_drywet {
-    float *data;
+    float const  data;
 } plugin_port_drywet_t;
 
 typedef struct plugin_port_length {
-    float *data;
+    float const  data;
 } plugin_port_length_t;
 
      
 
-typedef struct plugin_callbacks
-{
+typedef struct plugin_callbacks {
     struct plugin* (*const instantiate)(plugin_t *instance, double sample_rate, const char *bundle_path, const LV2_Feature *const *features);
     void (*const connect_port)(plugin_t *instance, uint32_t port, void *data_location);
     void (*const activate)(plugin_t *instance);
