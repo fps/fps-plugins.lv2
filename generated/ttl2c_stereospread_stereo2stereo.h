@@ -2,13 +2,17 @@
 #define plugin_cb_hh
 
 #include <lv2.h>
+#include <lv2/log/logger.h>
+#include <lv2/core/lv2_util.h>
 #include <stdint.h>
  
 typedef struct plugin_state plugin_state_t;
 
-typedef struct plugin {
-    struct plugin_state *state;
-    float *ports[6];
+typedef struct {
+    plugin_state_t *state;
+    void *ports[6];
+    LV2_URID_Map *map;
+    LV2_Log_Logger logger;
 } plugin_t;
 
 enum plugin_port_indices {
@@ -20,34 +24,32 @@ enum plugin_port_indices {
     length = 5,
 };
 
-typedef struct plugin_port_inl {
-    float const * data;
+typedef struct {
+    float const *data;
 } plugin_port_inl_t;
 
-typedef struct plugin_port_inr {
-    float const * data;
+typedef struct {
+    float const *data;
 } plugin_port_inr_t;
 
-typedef struct plugin_port_outl {
-    float  * data;
+typedef struct {
+    float *data;
 } plugin_port_outl_t;
 
-typedef struct plugin_port_outr {
-    float  * data;
+typedef struct {
+    float *data;
 } plugin_port_outr_t;
 
-typedef struct plugin_port_drywet {
-    float const  data;
+typedef struct {
+    float const data;
 } plugin_port_drywet_t;
 
-typedef struct plugin_port_length {
-    float const  data;
+typedef struct {
+    float const data;
 } plugin_port_length_t;
 
-     
-
-typedef struct plugin_callbacks {
-    struct plugin* (*const instantiate)(plugin_t *instance, double sample_rate, const char *bundle_path, const LV2_Feature *const *features);
+typedef struct {
+    plugin_t* (*const instantiate)(plugin_t *instance, double sample_rate, const char *bundle_path, const LV2_Feature *const *features);
     void (*const connect_port)(plugin_t *instance, uint32_t port, void *data_location);
     void (*const activate)(plugin_t *instance);
     void (*const run)(plugin_t *instance, uint32_t sample_count, const plugin_port_inl_t inl, const plugin_port_inr_t inr, const plugin_port_outl_t outl, const plugin_port_outr_t outr, const plugin_port_drywet_t drywet, const plugin_port_length_t length);

@@ -7,53 +7,74 @@
 #include <string.h>
     
 static void plugin_connect_port_desc(LV2_Handle instance, uint32_t port, void *data_location) {
-    if (plugin_callbacks.connect_port) { 
-        plugin_callbacks.connect_port((plugin_t *)instance, port, data_location); 
+    plugin_t *tinstance = (plugin_t*) instance;
+
+    if (plugin_callbacks.connect_port) {
+        plugin_callbacks.connect_port(tinstance, port, data_location);
     } else {
         if (port < 5) {
-            ((plugin_t*)instance)->ports[port] = (float*)data_location;
+            (tinstance)->ports[port] = (float*)data_location;
         }
     }
 }
 
 static LV2_Handle plugin_instantiate_desc(const LV2_Descriptor *descriptor, double sample_rate, const char *bundle_path, const LV2_Feature *const *features) {
-    plugin_t *instance = (plugin_t*)malloc(sizeof(struct plugin));
-    memset(instance, 0,  sizeof(struct plugin));
-    if (plugin_callbacks.instantiate) {
-        plugin_callbacks.instantiate(instance, sample_rate, bundle_path, features);
+    plugin_t *instance = (plugin_t*)calloc(1, sizeof(plugin_t));
+
+    if (!instance) {
+        return NULL;
     }
+
+    memset(instance, 0,  sizeof(plugin_t));
+
+    lv2_log_note(&instance->logger, "Instantiating a http://fps.io/plugins/stereospread-mono2stereo\n");
+
+    if (plugin_callbacks.instantiate) {
+        instance = plugin_callbacks.instantiate(instance, sample_rate, bundle_path, features);
+    }
+
     return (LV2_Handle)(instance);
 }
 
 static void plugin_cleanup_desc(LV2_Handle instance) {
+    plugin_t *tinstance = (plugin_t*) instance;
+
+    lv2_log_note(&tinstance->logger, "Cleaning up a http://fps.io/plugins/stereospread-mono2stereo\n");
+
     if (plugin_callbacks.cleanup) {
-        plugin_callbacks.cleanup((plugin_t*)instance);
+        plugin_callbacks.cleanup(tinstance);
     }
 
-    free(instance);
+    free(tinstance);
 }
 
 static void plugin_activate_desc(LV2_Handle instance) {
+    plugin_t *tinstance = (plugin_t*) instance;
+
     if (plugin_callbacks.activate) {
-        plugin_callbacks.activate((plugin_t*)instance);
+        plugin_callbacks.activate(tinstance);
     }
 }
 
 static void plugin_deactivate_desc(LV2_Handle instance) {
+    plugin_t *tinstance = (plugin_t*) instance;
+
     if (plugin_callbacks.deactivate) {
-        plugin_callbacks.deactivate((plugin_t*)instance);
+        plugin_callbacks.deactivate(tinstance);
     }
 }
 
 static void plugin_run_desc(LV2_Handle instance, uint32_t sample_count) {
     if (plugin_callbacks.run) {
-        const struct plugin_port_in in = { .data = ((plugin_t*)instance)->ports[0] };
-        const struct plugin_port_outl outl = { .data = ((plugin_t*)instance)->ports[1] };
-        const struct plugin_port_outr outr = { .data = ((plugin_t*)instance)->ports[2] };
-        const struct plugin_port_drywet drywet = { .data = ((plugin_t*)instance)->ports[3][0] };
-        const struct plugin_port_length length = { .data = ((plugin_t*)instance)->ports[4][0] };
+        plugin_t *tinstance = (plugin_t*) instance;
 
-        plugin_callbacks.run((plugin_t*)instance, sample_count, in, outl, outr, drywet, length);
+        const plugin_port_in_t in = { .data = ((float*)((plugin_t*)instance)->ports[0]) };
+        const plugin_port_outl_t outl = { .data = ((float*)((plugin_t*)instance)->ports[1]) };
+        const plugin_port_outr_t outr = { .data = ((float*)((plugin_t*)instance)->ports[2]) };
+        const plugin_port_drywet_t drywet = { .data = ((float*)((plugin_t*)instance)->ports[3])[0] };
+        const plugin_port_length_t length = { .data = ((float*)((plugin_t*)instance)->ports[4])[0] };
+
+        plugin_callbacks.run(tinstance, sample_count, in, outl, outr, drywet, length);
     }
 }
 
