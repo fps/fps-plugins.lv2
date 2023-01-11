@@ -1,37 +1,31 @@
-#ifndef plugin_cb_hh
-#define plugin_cb_hh
+#ifndef ttl2c_plugin_hh
+#define ttl2c_plugin_hh
 
 #include <lv2.h>
 #include <lv2/log/logger.h>
 #include <lv2/core/lv2_util.h>
+#include <lv2/atom/atom.h>
+#include <lv2/atom/util.h>
+#include <lv2/midi/midi.h>
+
 #include <stdint.h>
- 
+#include <stdlib.h>
+#include <string.h>
+
 typedef struct plugin_state plugin_state_t;
 
 typedef struct {
     plugin_state_t *state;
     void *ports[8];
-    LV2_URID_Map *map;
     LV2_Log_Logger logger;
 } plugin_t;
 
-enum plugin_port_indices {
-    in = 0,
-    out = 1,
-    t1 = 2,
-    t2 = 3,
-    strength = 4,
-    delay = 5,
-    maxratio = 6,
-    minratio = 7,
-};
-
 typedef struct {
-    float const *data;
+    float const * const data;
 } plugin_port_in_t;
 
 typedef struct {
-    float *data;
+    float * const data;
 } plugin_port_out_t;
 
 typedef struct {
@@ -62,7 +56,7 @@ typedef struct {
     plugin_t* (*const instantiate)(plugin_t *instance, double sample_rate, const char *bundle_path, const LV2_Feature *const *features);
     void (*const connect_port)(plugin_t *instance, uint32_t port, void *data_location);
     void (*const activate)(plugin_t *instance);
-    void (*const run)(plugin_t *instance, uint32_t sample_count, const plugin_port_in_t in, const plugin_port_out_t out, const plugin_port_t1_t t1, const plugin_port_t2_t t2, const plugin_port_strength_t strength, const plugin_port_delay_t delay, const plugin_port_maxratio_t maxratio, const plugin_port_minratio_t minratio);
+    void (*const run)(plugin_t *instance, uint32_t sample_count, plugin_port_in_t in, plugin_port_out_t out, plugin_port_t1_t t1, plugin_port_t2_t t2, plugin_port_strength_t strength, plugin_port_delay_t delay, plugin_port_maxratio_t maxratio, plugin_port_minratio_t minratio);
     void (*const deactivate)(plugin_t *instance);
     void (*const cleanup)(plugin_t *instance);
     const void *(*const extension_data)(const char *uri);

@@ -1,24 +1,19 @@
-#ifndef plugin_hh
-#define plugin_hh
+#ifndef ttl2c_plugin_cc
+#define ttl2c_plugin_cc
     
-  
-#include <lv2.h>
-#include <stdlib.h>
-#include <string.h>
-    
-static void plugin_connect_port_desc(LV2_Handle instance, uint32_t port, void *data_location) {
+static void plugin_connect_port_desc (LV2_Handle instance, uint32_t port, void *data_location) {
     plugin_t *tinstance = (plugin_t*) instance;
 
     if (plugin_callbacks.connect_port) {
         plugin_callbacks.connect_port(tinstance, port, data_location);
     } else {
         if (port < 8) {
-            (tinstance)->ports[port] = (float*)data_location;
+            (tinstance)->ports[port] = data_location;
         }
     }
 }
 
-static LV2_Handle plugin_instantiate_desc(const LV2_Descriptor *descriptor, double sample_rate, const char *bundle_path, const LV2_Feature *const *features) {
+static LV2_Handle plugin_instantiate_desc (const LV2_Descriptor *descriptor, double sample_rate, const char *bundle_path, const LV2_Feature *const *features) {
     plugin_t *instance = (plugin_t*)calloc(1, sizeof(plugin_t));
 
     if (!instance) {
@@ -27,69 +22,66 @@ static LV2_Handle plugin_instantiate_desc(const LV2_Descriptor *descriptor, doub
 
     memset(instance, 0,  sizeof(plugin_t));
 
-    lv2_log_note(&instance->logger, "Instantiating a http://fps.io/plugins/relative_dynamics\n");
+    lv2_features_query(features, LV2_LOG__log, &instance->logger.log, false, NULL);
+
 
     if (plugin_callbacks.instantiate) {
-        instance = plugin_callbacks.instantiate(instance, sample_rate, bundle_path, features);
+        instance = plugin_callbacks.instantiate (instance, sample_rate, bundle_path, features);
     }
 
     return (LV2_Handle)(instance);
 }
 
-static void plugin_cleanup_desc(LV2_Handle instance) {
+static void plugin_cleanup_desc (LV2_Handle instance) {
     plugin_t *tinstance = (plugin_t*) instance;
 
-    lv2_log_note(&tinstance->logger, "Cleaning up a http://fps.io/plugins/relative_dynamics\n");
-
     if (plugin_callbacks.cleanup) {
-        plugin_callbacks.cleanup(tinstance);
+        plugin_callbacks.cleanup (tinstance);
     }
 
     free(tinstance);
 }
 
-static void plugin_activate_desc(LV2_Handle instance) {
+static void plugin_activate_desc (LV2_Handle instance) {
     plugin_t *tinstance = (plugin_t*) instance;
 
     if (plugin_callbacks.activate) {
-        plugin_callbacks.activate(tinstance);
+        plugin_callbacks.activate (tinstance);
     }
 }
 
-static void plugin_deactivate_desc(LV2_Handle instance) {
+static void plugin_deactivate_desc (LV2_Handle instance) {
     plugin_t *tinstance = (plugin_t*) instance;
 
     if (plugin_callbacks.deactivate) {
-        plugin_callbacks.deactivate(tinstance);
+        plugin_callbacks.deactivate (tinstance);
     }
 }
 
-static void plugin_run_desc(LV2_Handle instance, uint32_t sample_count) {
+static void plugin_run_desc (LV2_Handle instance, uint32_t sample_count) {
     if (plugin_callbacks.run) {
         plugin_t *tinstance = (plugin_t*) instance;
 
-        const plugin_port_in_t in = { .data = ((float*)((plugin_t*)instance)->ports[0]) };
-        const plugin_port_out_t out = { .data = ((float*)((plugin_t*)instance)->ports[1]) };
-        const plugin_port_t1_t t1 = { .data = ((float*)((plugin_t*)instance)->ports[2])[0] };
-        const plugin_port_t2_t t2 = { .data = ((float*)((plugin_t*)instance)->ports[3])[0] };
-        const plugin_port_strength_t strength = { .data = ((float*)((plugin_t*)instance)->ports[4])[0] };
-        const plugin_port_delay_t delay = { .data = ((float*)((plugin_t*)instance)->ports[5])[0] };
-        const plugin_port_maxratio_t maxratio = { .data = ((float*)((plugin_t*)instance)->ports[6])[0] };
-        const plugin_port_minratio_t minratio = { .data = ((float*)((plugin_t*)instance)->ports[7])[0] };
+        plugin_port_in_t const in = { .data = ((float*)((plugin_t*)instance)->ports[0]) };
+        plugin_port_out_t const out = { .data = ((float*)((plugin_t*)instance)->ports[1]) };
+        plugin_port_t1_t const t1 = { .data = ((float*)((plugin_t*)instance)->ports[2])[0] };
+        plugin_port_t2_t const t2 = { .data = ((float*)((plugin_t*)instance)->ports[3])[0] };
+        plugin_port_strength_t const strength = { .data = ((float*)((plugin_t*)instance)->ports[4])[0] };
+        plugin_port_delay_t const delay = { .data = ((float*)((plugin_t*)instance)->ports[5])[0] };
+        plugin_port_maxratio_t const maxratio = { .data = ((float*)((plugin_t*)instance)->ports[6])[0] };
+        plugin_port_minratio_t const minratio = { .data = ((float*)((plugin_t*)instance)->ports[7])[0] };
 
-        plugin_callbacks.run(tinstance, sample_count, in, out, t1, t2, strength, delay, maxratio, minratio);
+        plugin_callbacks.run (tinstance, sample_count, in, out, t1, t2, strength, delay, maxratio, minratio);
     }
 }
 
-static const void *plugin_extension_data_desc(const char *uri) {
+static const void *plugin_extension_data_desc (const char *uri) {
     if (plugin_callbacks.extension_data) {
-        return plugin_callbacks.extension_data(uri);
+        return plugin_callbacks.extension_data (uri);
     } else {
         return 0;
     }
 }
-
-
 
 static LV2_Descriptor plugin_descriptor = {
     "http://fps.io/plugins/relative_dynamics",
@@ -111,4 +103,4 @@ LV2_SYMBOL_EXPORT const LV2_Descriptor* lv2_descriptor (uint32_t index) {
 }
 
 
-#endif // plugin_hh    
+#endif // plugin_hh
