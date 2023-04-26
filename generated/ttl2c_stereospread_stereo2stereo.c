@@ -82,7 +82,7 @@ static const void *plugin_extension_data_desc (const char *uri) {
 }
 
 static LV2_Descriptor plugin_descriptor = {
-    "http://fps.io/plugins/stereospread-stereo2stereo",
+    "http://dfdx.eu/plugins/stereospread-stereo2stereo",
     plugin_instantiate_desc,
     plugin_connect_port_desc,
     plugin_activate_desc,

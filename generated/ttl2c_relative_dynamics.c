@@ -84,7 +84,7 @@ static const void *plugin_extension_data_desc (const char *uri) {
 }
 
 static LV2_Descriptor plugin_descriptor = {
-    "http://fps.io/plugins/relative_dynamics",
+    "http://dfdx.eu/plugins/relative_dynamics",
     plugin_instantiate_desc,
     plugin_connect_port_desc,
     plugin_activate_desc,
