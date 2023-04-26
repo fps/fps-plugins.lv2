@@ -2,7 +2,7 @@
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix doap: <http://usefulinc.com/ns/doap#> .
 
-<http://fps.io/plugins/stereospread-mono2stereo> a lv2:Plugin ;
+<http://dfdx.eu/plugins/stereospread-mono2stereo> a lv2:Plugin ;
   doap:name "stereo spreader (mono to stereo)";
   doap:license <http://usefulinc.com/doap/licenses/gpl> ;
   doap:description "Applies a random phase conjugate pair of filters to the generated left and right channels" ; 
