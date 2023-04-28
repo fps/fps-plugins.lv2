@@ -6,7 +6,7 @@
 #include <fftw3.h>
 #include <iostream>
 
-#define FFT_REAL_SIZE 512
+#define FFT_REAL_SIZE 1024
 #define FFT_COMPLEX_SIZE (FFT_REAL_SIZE/2+1)
 
 typedef struct plugin_state {
@@ -76,6 +76,7 @@ static plugin_t* instantiate(plugin_t *instance, double sample_rate, const char 
 }
 
 static void cleanup(plugin_t *instance) {
+    std::cout << "cleanup1\n";
     fftw_free (instance->state->spectrum1);
     fftw_free (instance->state->spectrum2);
     fftw_free (instance->state->fft_buffer1);
@@ -85,7 +86,7 @@ static void cleanup(plugin_t *instance) {
     fftw_destroy_plan (instance->state->fft_plan2);
     fftw_destroy_plan (instance->state->ifft_plan);
     delete instance->state;
-    std::cout << "cleanup\n";
+    std::cout << "cleanup2\n";
 }
 
 #define EPSILON 0.0001f
