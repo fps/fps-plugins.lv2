@@ -6,7 +6,7 @@
 #include <fftw3.h>
 #include <iostream>
 
-#define FFT_REAL_SIZE 1024
+#define FFT_REAL_SIZE 512
 #define FFT_COMPLEX_SIZE (FFT_REAL_SIZE/2+1)
 
 typedef struct plugin_state {
