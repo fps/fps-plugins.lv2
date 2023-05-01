@@ -6,12 +6,12 @@
 #include <fftw3.h>
 #include <iostream>
 
-#define FFT_REAL_SIZE 1024
+#define FFT_REAL_SIZE 2048
 #define FFT_COMPLEX_SIZE (FFT_REAL_SIZE/2+1)
 
 typedef struct plugin_state {
     float samplerate;
-    std::vector<double> hann_window;
+    std::vector<double> window;
     
     std::vector<double> buffer11;
     int buffer_head11;
@@ -56,7 +56,7 @@ static plugin_t* instantiate(plugin_t *instance, double sample_rate, const char 
     instance->state = new plugin_state_t;
     instance->state->samplerate = sample_rate;
 
-    instance->state->hann_window.resize (FFT_REAL_SIZE, 0);
+    instance->state->window.resize (FFT_REAL_SIZE, 0);
 
     instance->state->buffer11.resize (FFT_REAL_SIZE, 0);
     instance->state->buffer_head11 = 0;
@@ -84,16 +84,16 @@ static plugin_t* instantiate(plugin_t *instance, double sample_rate, const char 
     
     instance->state->fft_buffer3 = (fftw_complex*)fftw_alloc_complex (FFT_COMPLEX_SIZE);
 
-    // std::cout << "window:\n";
     for (size_t index = 0; index < FFT_REAL_SIZE; ++index) {
-      instance->state->hann_window[index] = pow(sin(M_PI * index / FFT_REAL_SIZE), 2);
-      // std::cout << instance->state->hann_window[index] << "\n";
+      instance->state->window[index] = pow(sin(M_PI * index / FFT_REAL_SIZE), 2);
     }
 
     instance->state->fft_plan11 = fftw_plan_dft_r2c_1d(FFT_REAL_SIZE, &instance->state->buffer11[0], instance->state->fft_buffer1, FFTW_ESTIMATE);
     instance->state->fft_plan12 = fftw_plan_dft_r2c_1d(FFT_REAL_SIZE, &instance->state->buffer12[0], instance->state->fft_buffer1, FFTW_ESTIMATE);
+    
     instance->state->fft_plan21 = fftw_plan_dft_r2c_1d(FFT_REAL_SIZE, &instance->state->buffer21[0], instance->state->fft_buffer2, FFTW_ESTIMATE);
     instance->state->fft_plan22 = fftw_plan_dft_r2c_1d(FFT_REAL_SIZE, &instance->state->buffer22[0], instance->state->fft_buffer2, FFTW_ESTIMATE);
+    
     instance->state->ifft_plan = fftw_plan_dft_c2r_1d(FFT_REAL_SIZE, instance->state->fft_buffer3, &instance->state->response[0], FFTW_ESTIMATE);
 
     instance->state->convolution_buffer.resize(FFT_REAL_SIZE, 0);
@@ -103,7 +103,6 @@ static plugin_t* instantiate(plugin_t *instance, double sample_rate, const char 
 }
 
 static void cleanup(plugin_t *instance) {
-    std::cout << "cleanup1\n";
     fftw_destroy_plan (instance->state->fft_plan11);
     fftw_destroy_plan (instance->state->fft_plan12);
     fftw_destroy_plan (instance->state->fft_plan21);
@@ -114,8 +113,8 @@ static void cleanup(plugin_t *instance) {
     fftw_free (instance->state->fft_buffer1);
     fftw_free (instance->state->fft_buffer2);
     fftw_free (instance->state->fft_buffer3);
+    // fftw_cleanup ();
     delete instance->state;
-    std::cout << "cleanup2\n";
 }
 
 #define EPSILON 0.0001f
@@ -161,12 +160,13 @@ static void run(
         tinstance->fft_buffer3[index][1] = 0;
       }
       fftw_execute(tinstance->ifft_plan);
+      for (size_t index = 0; index < FFT_REAL_SIZE/2; ++index) tinstance->response[index + FFT_REAL_SIZE/2] = 0;
     }
 
     for(uint32_t sample_index = 0; sample_index < nframes; ++sample_index) {
         if (analyze1.data > 0) {
-            tinstance->buffer11[tinstance->buffer_head11] = in.data[sample_index] * tinstance->hann_window[tinstance->buffer_head11];
-            tinstance->buffer12[tinstance->buffer_head12] = in.data[sample_index] * tinstance->hann_window[tinstance->buffer_head12];
+            tinstance->buffer11[tinstance->buffer_head11] = in.data[sample_index] * tinstance->window[tinstance->buffer_head11];
+            tinstance->buffer12[tinstance->buffer_head12] = in.data[sample_index] * tinstance->window[tinstance->buffer_head12];
 
             ++tinstance->buffer_head11;
             ++tinstance->buffer_head12;
@@ -191,8 +191,8 @@ static void run(
         }
 
         if (analyze2.data > 0) {
-            tinstance->buffer21[tinstance->buffer_head21] = in.data[sample_index] * tinstance->hann_window[tinstance->buffer_head21];
-            tinstance->buffer22[tinstance->buffer_head22] = in.data[sample_index] * tinstance->hann_window[tinstance->buffer_head22];
+            tinstance->buffer21[tinstance->buffer_head21] = in.data[sample_index] * tinstance->window[tinstance->buffer_head21];
+            tinstance->buffer22[tinstance->buffer_head22] = in.data[sample_index] * tinstance->window[tinstance->buffer_head22];
 
             ++tinstance->buffer_head21;
             ++tinstance->buffer_head22;
