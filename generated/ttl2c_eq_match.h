@@ -18,47 +18,33 @@ typedef struct {
     plugin_state_t *state;
     void *ports[6];
     LV2_Log_Logger logger;
-}
-plugin_t;
+} plugin_t;
 
-typedef struct 
-{
+typedef struct {
     float const * const data;
-} 
-plugin_port_in_t;
+} plugin_port_in_t;
 
-typedef struct 
-{
+typedef struct {
     float * const data;
-} 
-plugin_port_out_t;
+} plugin_port_out_t;
 
-typedef struct 
-{
+typedef struct {
     float const data;
-} 
-plugin_port_analyze1_t;
+} plugin_port_analyze1_t;
 
-typedef struct 
-{
+typedef struct {
     float const data;
-} 
-plugin_port_analyze2_t;
+} plugin_port_analyze2_t;
 
-typedef struct 
-{
+typedef struct {
     float const data;
-} 
-plugin_port_apply_t;
+} plugin_port_apply_t;
 
-typedef struct 
-{
+typedef struct {
     float const data;
-} 
-plugin_port_gain_t;
+} plugin_port_gain_t;
 
-typedef struct 
-{
+typedef struct {
     plugin_t* (*const instantiate)(plugin_t *instance, double sample_rate, const char *bundle_path, const LV2_Feature *const *features);
     void (*const connect_port)(plugin_t *instance, uint32_t port, void *data_location);
     void (*const activate)(plugin_t *instance);
@@ -66,7 +52,6 @@ typedef struct
     void (*const deactivate)(plugin_t *instance);
     void (*const cleanup)(plugin_t *instance);
     const void *(*const extension_data)(const char *uri);
-} 
-plugin_callbacks_t;
+} plugin_callbacks_t;
 
 #endif    

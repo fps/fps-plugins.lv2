@@ -160,6 +160,9 @@ static void run(
         tinstance->fft_buffer3[index][1] = 0;
       }
       fftw_execute(tinstance->ifft_plan);
+      std::cout << "response: ";
+      for (size_t index = 0; index < FFT_REAL_SIZE; ++index) std::cout << tinstance->response[index] << " ";
+      std::cout << "\n";
       for (size_t index = 0; index < FFT_REAL_SIZE/2; ++index) tinstance->response[index + FFT_REAL_SIZE/2] = 0;
     }
 
