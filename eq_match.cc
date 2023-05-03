@@ -170,9 +170,44 @@ static void run(
       for (size_t index = 0; index < FFT_COMPLEX_SIZE; ++index) {
         tinstance->fft_buffer3[index][0] = (tinstance->spectrum2[index][0] / tinstance->spectrum1[index][0]) / FFT_REAL_SIZE;
         tinstance->fft_buffer3[index][1] = 0;
+
+        tinstance->fft_buffer3[index][0] = log(tinstance->fft_buffer3[index][0]);
       }
+
       fftw_execute(tinstance->ifft_plan);
 
+      // fold
+      for (size_t index = 0; index < FFT_REAL_SIZE; ++index) {
+        if (index == 0) {
+          tinstance->buffer22[index][0] = tinstance->fft_buffer4[index][0];
+          tinstance->buffer22[index][1] = 0;
+        }
+        if (index > 0 && index < FFT_REAL_SIZE/2) {
+          tinstance->buffer22[index][0] = tinstance->fft_buffer4[index][0];
+          tinstance->buffer22[index][1] = 0;
+          tinstance->buffer22[index][0] += tinstance->fft_buffer4[FFT_REAL_SIZE - 1 - index][0];
+          tinstance->buffer22[index][1] += 0;
+        }
+        if (index >= FFT_REAL_SIZE/2) {
+          tinstance->buffer22[index][0] = 0;
+          tinstance->buffer22[index][1] = 0;
+        }
+      }
+
+      fftw_execute(tinstance->fft_plan22);
+
+      for (size_t index = 0; index < FFT_REAL_SIZE; ++index) {
+        tinstance->fft_buffer2[index][0] = exp(tinstance->fft_buffer2[index][0]);
+        tinstance->fft_buffer2[index][1] = 0;
+      }
+
+      for (size_t index = 0; index < FFT_REAL_SIZE; ++index) {
+          tinstance->fft_buffer3[index][0] = tinstance->fft_buffer2[index][0];
+          tinstance->fft_buffer3[index][1] = tinstance->fft_buffer2[index][1];
+      }
+
+      fftw_execute (tinstance->ifft_plan);
+      // ifftshift
       for (size_t index = 0; index < FFT_REAL_SIZE; ++index) tinstance->response[index][0] = tinstance->fft_buffer4[(index + FFT_REAL_SIZE/2) % FFT_REAL_SIZE][0];
 
       std::cout << "response: ";
