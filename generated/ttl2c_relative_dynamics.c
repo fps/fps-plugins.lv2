@@ -49,7 +49,7 @@ static void plugin_cleanup_desc (LV2_Handle instance)
         plugin_callbacks.cleanup (tinstance);
     }
 
-    free(tinstance);
+    free(instance);
 }
 
 static void plugin_activate_desc (LV2_Handle instance) 
@@ -103,7 +103,7 @@ static const void *plugin_extension_data_desc (const char *uri)
     }
 }
 
-static LV2_Descriptor plugin_descriptor = 
+static const LV2_Descriptor plugin_descriptor = 
 {
     "http://dfdx.eu/plugins/relative_dynamics",
     plugin_instantiate_desc,
