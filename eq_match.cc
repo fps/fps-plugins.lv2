@@ -6,29 +6,29 @@
 #include <fftw3.h>
 #include <iostream>
 
-#define FFT_REAL_SIZE 2048
-#define FFT_COMPLEX_SIZE (FFT_REAL_SIZE/2+1)
+#define FFT_REAL_SIZE 1024
+#define FFT_COMPLEX_SIZE FFT_REAL_SIZE
 
 typedef struct plugin_state {
     float samplerate;
     std::vector<double> window;
     
-    std::vector<double> buffer11;
+    fftw_complex *buffer11;
     int buffer_head11;
     
-    std::vector<double> buffer12;
+    fftw_complex *buffer12;
     int buffer_head12;
     
-    std::vector<double> buffer21;
+    fftw_complex *buffer21;
     int buffer_head21;
     
-    std::vector<double> buffer22;
+    fftw_complex *buffer22;
     int buffer_head22;
     
     fftw_complex *spectrum1;
     fftw_complex *spectrum2;
     
-    std::vector<double> response;
+    fftw_complex *response;
     
     bool previous_analyze1;
     bool previous_analyze2;
@@ -47,6 +47,7 @@ typedef struct plugin_state {
     size_t number_of_ffts2;
     
     fftw_complex *fft_buffer3;
+    fftw_complex *fft_buffer4;
 
     std::vector<float> convolution_buffer;
     size_t convolution_buffer_head;
@@ -58,20 +59,20 @@ static plugin_t* instantiate(plugin_t *instance, double sample_rate, const char 
 
     instance->state->window.resize (FFT_REAL_SIZE, 0);
 
-    instance->state->buffer11.resize (FFT_REAL_SIZE, 0);
+    instance->state->buffer11 = (fftw_complex*)fftw_alloc_complex (FFT_COMPLEX_SIZE);
     instance->state->buffer_head11 = 0;
-    instance->state->buffer12.resize (FFT_REAL_SIZE, 0);
+    instance->state->buffer12 = (fftw_complex*)fftw_alloc_complex (FFT_COMPLEX_SIZE);
     instance->state->buffer_head12 = FFT_REAL_SIZE/2; 
     
-    instance->state->buffer21.resize (FFT_REAL_SIZE, 0);
+    instance->state->buffer21 = (fftw_complex*)fftw_alloc_complex (FFT_COMPLEX_SIZE);
     instance->state->buffer_head21 = 0;
-    instance->state->buffer22.resize (FFT_REAL_SIZE, 0);
+    instance->state->buffer22 = (fftw_complex*)fftw_alloc_complex (FFT_COMPLEX_SIZE);
     instance->state->buffer_head22 = FFT_REAL_SIZE/2; 
 
     instance->state->spectrum1 = (fftw_complex*)fftw_alloc_complex (FFT_COMPLEX_SIZE);
     instance->state->spectrum2 = (fftw_complex*)fftw_alloc_complex (FFT_COMPLEX_SIZE);
 
-    instance->state->response.resize (FFT_REAL_SIZE, 0);
+    instance->state->response = (fftw_complex*)fftw_alloc_complex (FFT_COMPLEX_SIZE);
 
     instance->state->previous_analyze1 = false;
     instance->state->previous_analyze2 = false;
@@ -83,18 +84,19 @@ static plugin_t* instantiate(plugin_t *instance, double sample_rate, const char 
     instance->state->number_of_ffts2 = 0;
     
     instance->state->fft_buffer3 = (fftw_complex*)fftw_alloc_complex (FFT_COMPLEX_SIZE);
+    instance->state->fft_buffer4 = (fftw_complex*)fftw_alloc_complex (FFT_COMPLEX_SIZE);
 
     for (size_t index = 0; index < FFT_REAL_SIZE; ++index) {
       instance->state->window[index] = pow(sin(M_PI * index / FFT_REAL_SIZE), 2);
     }
 
-    instance->state->fft_plan11 = fftw_plan_dft_r2c_1d(FFT_REAL_SIZE, &instance->state->buffer11[0], instance->state->fft_buffer1, FFTW_ESTIMATE);
-    instance->state->fft_plan12 = fftw_plan_dft_r2c_1d(FFT_REAL_SIZE, &instance->state->buffer12[0], instance->state->fft_buffer1, FFTW_ESTIMATE);
+    instance->state->fft_plan11 = fftw_plan_dft_1d(FFT_REAL_SIZE, &instance->state->buffer11[0], instance->state->fft_buffer1, FFTW_FORWARD, FFTW_ESTIMATE);
+    instance->state->fft_plan12 = fftw_plan_dft_1d(FFT_REAL_SIZE, &instance->state->buffer12[0], instance->state->fft_buffer1, FFTW_FORWARD, FFTW_ESTIMATE);
     
-    instance->state->fft_plan21 = fftw_plan_dft_r2c_1d(FFT_REAL_SIZE, &instance->state->buffer21[0], instance->state->fft_buffer2, FFTW_ESTIMATE);
-    instance->state->fft_plan22 = fftw_plan_dft_r2c_1d(FFT_REAL_SIZE, &instance->state->buffer22[0], instance->state->fft_buffer2, FFTW_ESTIMATE);
+    instance->state->fft_plan21 = fftw_plan_dft_1d(FFT_REAL_SIZE, &instance->state->buffer21[0], instance->state->fft_buffer2, FFTW_FORWARD, FFTW_ESTIMATE);
+    instance->state->fft_plan22 = fftw_plan_dft_1d(FFT_REAL_SIZE, &instance->state->buffer22[0], instance->state->fft_buffer2, FFTW_FORWARD, FFTW_ESTIMATE);
     
-    instance->state->ifft_plan = fftw_plan_dft_c2r_1d(FFT_REAL_SIZE, instance->state->fft_buffer3, &instance->state->response[0], FFTW_ESTIMATE);
+    instance->state->ifft_plan = fftw_plan_dft_1d(FFT_REAL_SIZE, instance->state->fft_buffer3, instance->state->fft_buffer4, FFTW_BACKWARD, FFTW_ESTIMATE);
 
     instance->state->convolution_buffer.resize(FFT_REAL_SIZE, 0);
     instance->state->convolution_buffer_head = FFT_REAL_SIZE - 1;
@@ -108,11 +110,21 @@ static void cleanup(plugin_t *instance) {
     fftw_destroy_plan (instance->state->fft_plan21);
     fftw_destroy_plan (instance->state->fft_plan22);
     fftw_destroy_plan (instance->state->ifft_plan);
+
     fftw_free (instance->state->spectrum1);
     fftw_free (instance->state->spectrum2);
+
+    fftw_free (instance->state->buffer11);
+    fftw_free (instance->state->buffer12);
+    fftw_free (instance->state->buffer22);
+    fftw_free (instance->state->buffer21);
+
+    fftw_free (instance->state->response);
+
     fftw_free (instance->state->fft_buffer1);
     fftw_free (instance->state->fft_buffer2);
     fftw_free (instance->state->fft_buffer3);
+    fftw_free (instance->state->fft_buffer4);
     // fftw_cleanup ();
     delete instance->state;
 }
@@ -133,8 +145,8 @@ static void run(
     if (!previous_analyze1 && analyze1.data > 0) {
       // start collecting samples for spectrum 1
       std::cout << "start collecting spectrum1\n";
-      memset(&tinstance->buffer11[0], 0, FFT_REAL_SIZE);
-      memset(&tinstance->buffer12[0], 0, FFT_REAL_SIZE);
+      memset(&tinstance->buffer11[0], 0, FFT_REAL_SIZE * 2);
+      memset(&tinstance->buffer12[0], 0, FFT_REAL_SIZE * 2);
       memset(&tinstance->spectrum1[0], 0, FFT_COMPLEX_SIZE * 2);
       tinstance->buffer_head11 = 0;
       tinstance->buffer_head12 = FFT_REAL_SIZE/2;
@@ -144,8 +156,8 @@ static void run(
     if (!previous_analyze2 && analyze2.data > 0) {
       // start collecting samples for spectrum 2
       std::cout << "start collecting spectrum2\n";
-      memset(&tinstance->buffer21[0], 0, FFT_REAL_SIZE);
-      memset(&tinstance->buffer22[0], 0, FFT_REAL_SIZE);
+      memset(&tinstance->buffer21[0], 0, FFT_REAL_SIZE * 2);
+      memset(&tinstance->buffer22[0], 0, FFT_REAL_SIZE * 2);
       memset(&tinstance->spectrum2[0], 0, FFT_COMPLEX_SIZE * 2);
       tinstance->buffer_head21 = 0;
       tinstance->buffer_head22 = FFT_REAL_SIZE/2;
@@ -160,32 +172,37 @@ static void run(
         tinstance->fft_buffer3[index][1] = 0;
       }
       fftw_execute(tinstance->ifft_plan);
+
+      for (size_t index = 0; index < FFT_REAL_SIZE; ++index) tinstance->response[index][0] = tinstance->fft_buffer4[(index + FFT_REAL_SIZE/2) % FFT_REAL_SIZE][0];
+
       std::cout << "response: ";
-      for (size_t index = 0; index < FFT_REAL_SIZE; ++index) std::cout << tinstance->response[index] << " ";
+      for (size_t index = 0; index < FFT_REAL_SIZE; ++index) std::cout << tinstance->response[index][0] << " ";
       std::cout << "\n";
-      for (size_t index = 0; index < FFT_REAL_SIZE/2; ++index) tinstance->response[index + FFT_REAL_SIZE/2] = 0;
+      // for (size_t index = 0; index < FFT_REAL_SIZE/2; ++index) tinstance->response[index + FFT_REAL_SIZE/2][0] = 0;
     }
 
     for(uint32_t sample_index = 0; sample_index < nframes; ++sample_index) {
         if (analyze1.data > 0) {
-            tinstance->buffer11[tinstance->buffer_head11] = in.data[sample_index] * tinstance->window[tinstance->buffer_head11];
-            tinstance->buffer12[tinstance->buffer_head12] = in.data[sample_index] * tinstance->window[tinstance->buffer_head12];
+            tinstance->buffer11[tinstance->buffer_head11][0] = in.data[sample_index] * tinstance->window[tinstance->buffer_head11];
+            tinstance->buffer12[tinstance->buffer_head12][0] = in.data[sample_index] * tinstance->window[tinstance->buffer_head12];
 
             ++tinstance->buffer_head11;
             ++tinstance->buffer_head12;
+
             if (tinstance->buffer_head11 >= FFT_REAL_SIZE) {
                 fftw_execute (tinstance->fft_plan11);
                 for (size_t index = 0; index < FFT_COMPLEX_SIZE; ++index) {
-                    tinstance->spectrum1[index][0] += (sqrt(pow(tinstance->fft_buffer1[index][0], 2) + pow(tinstance->fft_buffer1[index][1], 2)) - tinstance->spectrum1[index][0]) / (tinstance->number_of_ffts1 + 1);
+                    tinstance->spectrum1[index][0] += sqrt(pow(tinstance->fft_buffer1[index][0], 2) + pow(tinstance->fft_buffer1[index][1], 2));
                     tinstance->spectrum1[index][1] = 0;
                 }
                 ++tinstance->number_of_ffts1;
                 tinstance->buffer_head11 = 0;
             }
+
             if (tinstance->buffer_head12 >= FFT_REAL_SIZE) {
                 fftw_execute (tinstance->fft_plan12);
                 for (size_t index = 0; index < FFT_COMPLEX_SIZE; ++index) {
-                    tinstance->spectrum1[index][0] += (sqrt(pow(tinstance->fft_buffer1[index][0], 2) + pow(tinstance->fft_buffer1[index][1], 2)) - tinstance->spectrum1[index][0]) / (tinstance->number_of_ffts1 + 1);
+                    tinstance->spectrum1[index][0] += sqrt(pow(tinstance->fft_buffer1[index][0], 2) + pow(tinstance->fft_buffer1[index][1], 2));
                     tinstance->spectrum1[index][1] = 0;
                 }
                 ++tinstance->number_of_ffts1;
@@ -194,24 +211,26 @@ static void run(
         }
 
         if (analyze2.data > 0) {
-            tinstance->buffer21[tinstance->buffer_head21] = in.data[sample_index] * tinstance->window[tinstance->buffer_head21];
-            tinstance->buffer22[tinstance->buffer_head22] = in.data[sample_index] * tinstance->window[tinstance->buffer_head22];
+            tinstance->buffer21[tinstance->buffer_head21][0] = in.data[sample_index] * tinstance->window[tinstance->buffer_head21];
+            tinstance->buffer22[tinstance->buffer_head22][0] = in.data[sample_index] * tinstance->window[tinstance->buffer_head22];
 
             ++tinstance->buffer_head21;
             ++tinstance->buffer_head22;
+
             if (tinstance->buffer_head21 >= FFT_REAL_SIZE) {
                 fftw_execute (tinstance->fft_plan21);
                 for (size_t index = 0; index < FFT_COMPLEX_SIZE; ++index) {
-                    tinstance->spectrum2[index][0] += (sqrt(pow(tinstance->fft_buffer2[index][0], 2) + pow(tinstance->fft_buffer2[index][1], 2)) - tinstance->spectrum2[index][0]) / (tinstance->number_of_ffts2 + 1);
+                    tinstance->spectrum2[index][0] += sqrt(pow(tinstance->fft_buffer2[index][0], 2) + pow(tinstance->fft_buffer2[index][1], 2));
                     tinstance->spectrum2[index][1] = 0;
                 }
                 ++tinstance->number_of_ffts2;
                 tinstance->buffer_head21 = 0;
             }
+
             if (tinstance->buffer_head22 >= FFT_REAL_SIZE) {
                 fftw_execute (tinstance->fft_plan22);
                 for (size_t index = 0; index < FFT_COMPLEX_SIZE; ++index) {
-                    tinstance->spectrum2[index][0] += (sqrt(pow(tinstance->fft_buffer2[index][0], 2) + pow(tinstance->fft_buffer2[index][1], 2)) - tinstance->spectrum2[index][0]) / (tinstance->number_of_ffts2 + 1);
+                    tinstance->spectrum2[index][0] += sqrt(pow(tinstance->fft_buffer2[index][0], 2) + pow(tinstance->fft_buffer2[index][1], 2));
                     tinstance->spectrum2[index][1] = 0;
                 }
                 ++tinstance->number_of_ffts2;
@@ -226,7 +245,7 @@ static void run(
         if (apply.data > 0) {
             out.data[sample_index] = 0;
             for (size_t index = 0; index < FFT_REAL_SIZE; ++index) {
-                out.data[sample_index] += tinstance->response[index] * tinstance->convolution_buffer[(tinstance->convolution_buffer_head + index) % FFT_REAL_SIZE];
+                out.data[sample_index] += tinstance->response[index][0] * tinstance->convolution_buffer[(tinstance->convolution_buffer_head + index) % FFT_REAL_SIZE];
             }
         }        
 
