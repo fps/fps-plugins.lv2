@@ -5,6 +5,7 @@
 #include <vector>
 #include <fftw3.h>
 #include <iostream>
+#include <complex>
 
 #define FFT_SIZE 1024
 
@@ -174,24 +175,31 @@ static void run(
     if ((previous_analyze1 && !(analyze1.data > 0)) || (previous_analyze2 && !(analyze2.data > 0))) {
       // calculate response
       std::cout << "calculate response\n";
+#if 0
       for (size_t index = 0; index < FFT_SIZE; ++index) std::cout << tinstance->spectrum1[index][0] << " ";
       std::cout << "\n";
 
       for (size_t index = 0; index < FFT_SIZE; ++index) std::cout << tinstance->spectrum2[index][0] << " ";
       std::cout << "\n";
+#endif
 
       for (size_t index = 0; index < FFT_SIZE; ++index) {
         tinstance->fft_buffer3[index][0] = ((tinstance->spectrum2[index][0] / tinstance->number_of_ffts2) / (tinstance->spectrum1[index][0] / tinstance->number_of_ffts1));
         tinstance->fft_buffer3[index][1] = 0;
       }
       
+      std::cout << "ratio: ";
       for (size_t index = 0; index < FFT_SIZE; ++index) std::cout << tinstance->fft_buffer3[index][0] << " ";
-      std::cout << "\n";
+      std::cout << "\n\n";
       
       // exp(fft(fold(ifft(log(s)))))
       for (size_t index = 0; index < FFT_SIZE; ++index) {
         tinstance->fft_buffer3[index][0] = log(tinstance->fft_buffer3[index][0]);
       }
+
+      std::cout << "log: ";
+      for (size_t index = 0; index < FFT_SIZE; ++index) std::cout << tinstance->fft_buffer3[index][0] << " ";
+      std::cout << "\n\n";
 
       std::cout << tinstance->fft_buffer3[0][0] << "\n";
       
@@ -200,6 +208,10 @@ static void run(
 
       for (size_t index = 0; index < FFT_SIZE; ++index) tinstance->fft_buffer4[index][0] /= FFT_SIZE;
       
+      std::cout << "ifft: ";
+      for (size_t index = 0; index < FFT_SIZE; ++index) std::cout << tinstance->fft_buffer4[index][0] << " ";
+      std::cout << "\n\n";
+
       std::cout << tinstance->fft_buffer4[0][0] << " " << tinstance->fft_buffer4[0][1] << "\n";
 
       // fold
@@ -211,26 +223,40 @@ static void run(
         if (index > 0 && index < FFT_SIZE/2) {
           tinstance->fft_buffer3[index][0] = tinstance->fft_buffer4[index][0];
           tinstance->fft_buffer3[index][1] = 0;
-          tinstance->fft_buffer3[index][0] += tinstance->fft_buffer4[FFT_SIZE - 1 - index][0];
-          tinstance->fft_buffer3[index][1] += 0;
+          tinstance->fft_buffer3[index][0] += tinstance->fft_buffer4[FFT_SIZE - index][0];
         }
-        if (index >= FFT_SIZE/2) {
+        if (index == FFT_SIZE/2) {
+          tinstance->fft_buffer3[index][0] = tinstance->fft_buffer4[index][0];
+        }
+        if (index > FFT_SIZE/2) {
           tinstance->fft_buffer3[index][0] = 0;
           tinstance->fft_buffer3[index][1] = 0;
         }
       }
+
+      std::cout << "fold: ";
+      for (size_t index = 0; index < FFT_SIZE; ++index) std::cout << tinstance->fft_buffer3[index][0] << " ";
+      std::cout << "\n\n";
 
       std::cout << tinstance->fft_buffer3[0][0] << "\n";
 
       // 3 -> 5
       fftw_execute(tinstance->fft_plan);
 
-      std::cout << tinstance->fft_buffer5[0][0] << "\n";
+      std::cout << tinstance->fft_buffer5[0][0] << " " << tinstance->fft_buffer5[0][1] << "\n";
 
       for (size_t index = 0; index < FFT_SIZE; ++index) {
-        tinstance->fft_buffer3[index][0] = exp(tinstance->fft_buffer5[index][0]);
-        tinstance->fft_buffer3[index][1] = 0;
+        std::complex<double> c(tinstance->fft_buffer5[index][0], tinstance->fft_buffer5[index][1]);
+        std::complex<double> c2 = std::exp(c);
+        tinstance->fft_buffer3[index][0] = std::real(c2);
+        tinstance->fft_buffer3[index][1] = std::imag(c2);
       }
+
+      std::cout << "exp: ";
+      for (size_t index = 0; index < FFT_SIZE; ++index) std::cout << tinstance->fft_buffer3[index][0] << " ";
+      std::cout << "\n\n";
+      for (size_t index = 0; index < FFT_SIZE; ++index) std::cout << tinstance->fft_buffer3[index][1] << " ";
+      std::cout << "\n\n";
 
       std::cout << tinstance->fft_buffer3[0][0] << "\n";
 
@@ -239,10 +265,13 @@ static void run(
       for (size_t index = 0; index < FFT_SIZE; ++index) tinstance->fft_buffer4[index][0] /= FFT_SIZE;
       
       // ifftshift
-      for (size_t index = 0; index < FFT_SIZE; ++index) tinstance->response[index][0] = tinstance->fft_buffer4[(index + FFT_SIZE/2) % FFT_SIZE][0];
+      // for (size_t index = 0; index < FFT_SIZE; ++index) tinstance->response[index][0] = tinstance->fft_buffer4[(index + FFT_SIZE/2) % FFT_SIZE][0];
+      for (size_t index = 0; index < FFT_SIZE; ++index) tinstance->response[index][0] = tinstance->fft_buffer4[index][0];
 
       std::cout << "response: ";
       for (size_t index = 0; index < FFT_SIZE; ++index) std::cout << tinstance->response[index][0] << " ";
+      std::cout << "\n";
+      for (size_t index = 0; index < FFT_SIZE; ++index) std::cout << tinstance->response[index][1] << " ";
       std::cout << "\n";
       // for (size_t index = 0; index < FFT_SIZE/2; ++index) tinstance->response[index + FFT_SIZE/2][0] = 0;
     }

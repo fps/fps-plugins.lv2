@@ -18,41 +18,29 @@ typedef struct {
     plugin_state_t *state;
     void *ports[5];
     LV2_Log_Logger logger;
-}
-plugin_t;
+} plugin_t;
 
-typedef struct 
-{
+typedef struct {
     float const * const data;
-} 
-plugin_port_in_t;
+} plugin_port_in_t;
 
-typedef struct 
-{
+typedef struct {
     float * const data;
-} 
-plugin_port_outl_t;
+} plugin_port_outl_t;
 
-typedef struct 
-{
+typedef struct {
     float * const data;
-} 
-plugin_port_outr_t;
+} plugin_port_outr_t;
 
-typedef struct 
-{
+typedef struct {
     float const data;
-} 
-plugin_port_drywet_t;
+} plugin_port_drywet_t;
 
-typedef struct 
-{
+typedef struct {
     float const data;
-} 
-plugin_port_length_t;
+} plugin_port_length_t;
 
-typedef struct 
-{
+typedef struct {
     plugin_t* (*const instantiate)(plugin_t *instance, double sample_rate, const char *bundle_path, const LV2_Feature *const *features);
     void (*const connect_port)(plugin_t *instance, uint32_t port, void *data_location);
     void (*const activate)(plugin_t *instance);
@@ -60,7 +48,6 @@ typedef struct
     void (*const deactivate)(plugin_t *instance);
     void (*const cleanup)(plugin_t *instance);
     const void *(*const extension_data)(const char *uri);
-} 
-plugin_callbacks_t;
+} plugin_callbacks_t;
 
 #endif    
