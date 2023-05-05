@@ -267,8 +267,8 @@ struct eq_match
     DBG(m_fft_buffer5[0][0] << " " << m_fft_buffer5[0][1] << "\n")
 
     for (size_t index = 0; index < m_fft_size; ++index) {
-      std::complex<double> c(m_fft_buffer5[index][0], m_fft_buffer5[index][1]);
-      std::complex<double> c2 = std::exp(c);
+      std::complex<FPS_FLOAT> c(m_fft_buffer5[index][0], m_fft_buffer5[index][1]);
+      std::complex<FPS_FLOAT> c2 = std::exp(c);
       m_fft_buffer3[index][0] = std::real(c2);
       m_fft_buffer3[index][1] = std::imag(c2);
     }
