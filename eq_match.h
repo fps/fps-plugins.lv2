@@ -46,6 +46,12 @@
 
 #define FPS_FLOAT FPS_PLUGINS_EQ_MATCH_FLOATING_POINT_TYPE
 
+#ifdef NDEBUG
+#define DBG(x) {}
+#else
+#define DBG(x) {std::cerr << x;}
+#endif
+
 struct eq_match
 {
   size_t m_fft_size;
@@ -188,31 +194,31 @@ struct eq_match
 
   void calculate_response ()
   {
-    std::cout << "spectrum1: ";
-    for (size_t index = 0; index < m_fft_size; ++index) std::cout << m_spectrum1[index][0] << " ";
-    std::cout << "\nspectrum2: ";
-    for (size_t index = 0; index < m_fft_size; ++index) std::cout << m_spectrum2[index][0] << " ";
-    std::cout << "\n\n";
+    DBG("spectrum1: ")
+    for (size_t index = 0; index < m_fft_size; ++index) DBG(m_spectrum1[index][0] << " ")
+    DBG("\nspectrum2: ")
+    for (size_t index = 0; index < m_fft_size; ++index) DBG(m_spectrum2[index][0] << " ")
+    DBG("\n\n")
 
     for (size_t index = 0; index < m_fft_size; ++index) {
       m_fft_buffer3[index][0] = ((m_spectrum2[index][0] / m_number_of_ffts2) / (m_spectrum1[index][0] / m_number_of_ffts1));
       m_fft_buffer3[index][1] = 0;
     }
 
-    std::cout << "ratio: ";
-    for (size_t index = 0; index < m_fft_size; ++index) std::cout << m_fft_buffer3[index][0] << " ";
-    std::cout << "\n\n";
+    DBG("ratio: ")
+    for (size_t index = 0; index < m_fft_size; ++index) DBG(m_fft_buffer3[index][0] << " ")
+    DBG("\n\n")
 
     // exp(fft(fold(ifft(log(s)))))
     for (size_t index = 0; index < m_fft_size; ++index) {
       m_fft_buffer3[index][0] = log(m_fft_buffer3[index][0]);
     }
 
-    std::cout << "log: ";
-    for (size_t index = 0; index < m_fft_size; ++index) std::cout << m_fft_buffer3[index][0] << " ";
-    std::cout << "\n\n";
+    DBG("log: ")
+    for (size_t index = 0; index < m_fft_size; ++index) DBG(m_fft_buffer3[index][0] << " ")
+    DBG("\n\n")
 
-    std::cout << m_fft_buffer3[0][0] << "\n";
+    DBG(m_fft_buffer3[0][0] << "\n")
 
     // 3 -> 4
     FPS_FFTW_EXECUTE(m_ifft_plan);
@@ -223,11 +229,11 @@ struct eq_match
       m_response[index][0] = m_fft_buffer4[index][0];
     }
 
-    std::cout << "ifft: ";
-    for (size_t index = 0; index < m_fft_size; ++index) std::cout << m_fft_buffer4[index][0] << " ";
-    std::cout << "\n\n";
+    DBG("ifft: ")
+    for (size_t index = 0; index < m_fft_size; ++index) DBG(m_fft_buffer4[index][0] << " ")
+    DBG("\n\n")
 
-    std::cout << m_fft_buffer4[0][0] << " " << m_fft_buffer4[0][1] << "\n";
+    DBG(m_fft_buffer4[0][0] << " " << m_fft_buffer4[0][1] << "\n")
 
     // fold
     for (size_t index = 0; index < m_fft_size; ++index) {
@@ -249,16 +255,16 @@ struct eq_match
       }
     }
 
-    std::cout << "fold: ";
-    for (size_t index = 0; index < m_fft_size; ++index) std::cout << m_fft_buffer3[index][0] << " ";
-    std::cout << "\n\n";
+    DBG("fold: ")
+    for (size_t index = 0; index < m_fft_size; ++index) DBG(m_fft_buffer3[index][0] << " ")
+    DBG("\n\n")
 
-    std::cout << m_fft_buffer3[0][0] << "\n";
+    DBG(m_fft_buffer3[0][0] << "\n")
 
     // 3 -> 5
     FPS_FFTW_EXECUTE (m_fft_plan);
 
-    std::cout << m_fft_buffer5[0][0] << " " << m_fft_buffer5[0][1] << "\n";
+    DBG(m_fft_buffer5[0][0] << " " << m_fft_buffer5[0][1] << "\n")
 
     for (size_t index = 0; index < m_fft_size; ++index) {
       std::complex<double> c(m_fft_buffer5[index][0], m_fft_buffer5[index][1]);
@@ -267,13 +273,13 @@ struct eq_match
       m_fft_buffer3[index][1] = std::imag(c2);
     }
 
-    std::cout << "exp: ";
-    for (size_t index = 0; index < m_fft_size; ++index) std::cout << m_fft_buffer3[index][0] << " ";
-    std::cout << "\n\n";
-    for (size_t index = 0; index < m_fft_size; ++index) std::cout << m_fft_buffer3[index][1] << " ";
-    std::cout << "\n\n";
+    DBG("exp: ")
+    for (size_t index = 0; index < m_fft_size; ++index) DBG(m_fft_buffer3[index][0] << " ")
+    DBG("\n\n")
+    for (size_t index = 0; index < m_fft_size; ++index) DBG(m_fft_buffer3[index][1] << " ")
+    DBG("\n\n")
 
-    std::cout << m_fft_buffer3[0][0] << "\n";
+    DBG(m_fft_buffer3[0][0] << "\n")
 
     // 3 -> 4
     FPS_FFTW_EXECUTE (m_ifft_plan);
@@ -283,11 +289,11 @@ struct eq_match
     // for (size_t index = 0; index < m_fft_size; ++index) response[index][0] = fft_buffer4[(index + m_fft_size/2) % m_fft_size][0];
     for (size_t index = 0; index < m_fft_size; ++index) m_minimum_phase_response[index][0] = m_fft_buffer4[index][0];
 
-    std::cout << "response: ";
-    for (size_t index = 0; index < m_fft_size; ++index) std::cout << m_minimum_phase_response[index][0] << " ";
-    std::cout << "\n";
-    for (size_t index = 0; index < m_fft_size; ++index) std::cout << m_minimum_phase_response[index][1] << " ";
-    std::cout << "\n";
+    DBG("response: ")
+    for (size_t index = 0; index < m_fft_size; ++index) DBG(m_minimum_phase_response[index][0] << " ")
+    DBG("\n")
+    for (size_t index = 0; index < m_fft_size; ++index) DBG(m_minimum_phase_response[index][1] << " ")
+    DBG("\n")
     // for (size_t index = 0; index < m_fft_size/2; ++index) response[index + m_fft_size/2][0] = 0;
   }
 
@@ -318,7 +324,7 @@ protected:
       ++buffer_head2;
 
       if (buffer_head1 >= (int)m_fft_size) {
-          // std::cout << "execute " << buffer_index << "-1\n";
+          // DBG("execute " << buffer_index << "-1\n")
           FPS_FFTW_EXECUTE (fft_plan1);
           for (size_t index = 0; index < m_fft_size; ++index) {
               spectrum[index][0] += sqrt(pow(fft_buffer[index][0], 2) + pow(fft_buffer[index][1], 2));
@@ -329,7 +335,7 @@ protected:
       }
 
       if (buffer_head2 >= (int)m_fft_size) {
-          // std::cout << "execute " << buffer_index << "-2\n";
+          // DBG("execute " << buffer_index << "-2\n")
           FPS_FFTW_EXECUTE (fft_plan2);
           for (size_t index = 0; index < m_fft_size; ++index) {
               spectrum[index][0] += sqrt(pow(fft_buffer[index][0], 2) + pow(fft_buffer[index][1], 2));

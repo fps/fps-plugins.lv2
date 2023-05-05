@@ -1,7 +1,7 @@
 .PHONY: all
 
 # CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g
-CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g3
+CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g3 -DNDEBUG
 
 all: plugins test
 
