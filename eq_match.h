@@ -39,7 +39,7 @@
   #define FPS_FFTW_ALLOC_COMPLEX fftw_alloc_complex
   #define FPS_FFTW_FREE fftw_free
   #define FPS_FFTW_DESTROY_PLAN fftw_destroy_plan
-  #define FPS_FFTW_EXECUTE FPS_FFTW_EXECUTE
+  #define FPS_FFTW_EXECUTE fftw_execute
 #else
   #error "Unexpected value of FPS_PLUGINS_EQ_MATCH_FLOATING_POINT_TYPE"
 #endif
