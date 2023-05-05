@@ -1,11 +1,26 @@
 #ifndef FPS_PLUGINS_EQ_MATCH_HH
 #define FPS_PLUGINS_EQ_MATCH_HH
 
-// You need to provide a macro definition for the floating
-// point type used. e.g.
-// #define FPS_PLUGINS_EQ_MATCH_FLOATING_POINT_TYPE float
-// or
-// #define FPS_PLUGINS_EQ_MATCH_FLOATING_POINT_TYPE double
+/**
+ * This whole class is not realtime safe!
+ *
+ * How to:
+ * (1) Construct an object of type eq_match
+ * (2) Call add_frames_to_buffer1 consecutively to estimate spectrum1
+ * (3) Call add_frames_to_buffer2 consecutively to estimate spectrum1
+ * (4) Call calculate_response ()
+ * (5) Get the calculated IRs from m_response (linear phase) or
+ *     m_minimum_phase_response (which is minimum phase)
+ *
+ * You need to provide a macro definition for the floating
+ * point type used. e.g.
+ *
+ *   #define FPS_PLUGINS_EQ_MATCH_FLOATING_POINT_TYPE float
+ *
+ * or
+ *
+ *   #define FPS_PLUGINS_EQ_MATCH_FLOATING_POINT_TYPE double
+ */
 
 #if FPS_PLUGINS_EQ_MATCH_FLOATING_POINT_TYPE == float
   #define FPS_FFTW_COMPLEX fftwf_complex
@@ -29,17 +44,6 @@
 
 #define FPS_FLOAT FPS_PLUGINS_EQ_MATCH_FLOATING_POINT_TYPE
 
-/**
- * This whole class is not realtime safe!
- *
- * How to:
- * (1) Construct an object of type eq_match
- * (2) Call add_frames_to_buffer1 consecutively to estimate spectrum1
- * (3) Call add_frames_to_buffer2 consecutively to estimate spectrum1
- * (4) Call calculate_response ()
- * (5) Get the calculated IRs from m_response (linear phase) or
- *     m_minimum_phase_response (which is minimum phase)
-*/
 struct eq_match
 {
   size_t m_fft_size;
