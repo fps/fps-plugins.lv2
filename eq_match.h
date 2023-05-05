@@ -6,10 +6,12 @@
  *
  * How to:
  * (1) Construct an object of type eq_match
- * (2) Call add_frames_to_buffer1 consecutively to estimate spectrum1
- * (3) Call add_frames_to_buffer2 consecutively to estimate spectrum1
- * (4) Call calculate_response ()
- * (5) Get the calculated IRs from m_response (linear phase) or
+ * (2) Call reset_buffer1 () to reset the spectrum estimation buffer1
+ * (3) Call add_frames_to_buffer1 consecutively to estimate spectrum1
+ * (4) Call reset_buffer2 () to reset the spectrum estimation buffer1
+ * (5) Call add_frames_to_buffer2 consecutively to estimate spectrum1
+ * (6) Call calculate_response ()
+ * (7) Get the calculated IRs from m_response (linear phase) or
  *     m_minimum_phase_response (which is minimum phase)
  *
  * You need to provide a macro definition for the floating
