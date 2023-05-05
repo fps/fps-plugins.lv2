@@ -10,7 +10,7 @@
 #define FPS_PLUGINS_EQ_MATCH_FLOATING_POINT_TYPE float
 #include "eq_match.h"
 
-#define FFT_SIZE 64
+#define FFT_SIZE 2048
 
 typedef struct plugin_state
 {

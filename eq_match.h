@@ -35,7 +35,7 @@ struct eq_match
   size_t m_fft_size;
   FPS_FLOAT m_sample_rate;
 
-  std::vector<FPS_PLUGINS_EQ_MATCH_FLOATING_POINT_TYPE> m_window;
+  std::vector<FPS_FLOAT> m_window;
 
   // Buffers to accumulate samples
   FPS_FFTW_COMPLEX *m_buffer11;
@@ -72,7 +72,7 @@ struct eq_match
   FPS_FFTW_COMPLEX *m_response;
   FPS_FFTW_COMPLEX *m_minimum_phase_response;
 
-  eq_match (size_t fft_size, FPS_PLUGINS_EQ_MATCH_FLOATING_POINT_TYPE sample_rate) :
+  eq_match (size_t fft_size, FPS_FLOAT sample_rate) :
     m_fft_size (fft_size),
     m_sample_rate (sample_rate),
     m_window(fft_size, 0.f)
@@ -149,54 +149,6 @@ struct eq_match
     FPS_FFTW_FREE (m_minimum_phase_response);
   }
 
-  void add_frames_to_buffer (size_t buffer_index, const FPS_FLOAT *buffer, size_t number_of_samples)
-  {
-    FPS_FFTW_COMPLEX *buffer1 = (0 == buffer_index) ? m_buffer11 : m_buffer21;
-    FPS_FFTW_COMPLEX *buffer2 = (0 == buffer_index) ? m_buffer12 : m_buffer22;
-
-    FPS_FFTW_PLAN fft_plan1 = (0 == buffer_index) ? m_fft_plan11 : m_fft_plan21;
-    FPS_FFTW_PLAN fft_plan2 = (0 == buffer_index) ? m_fft_plan12 : m_fft_plan22;
-
-    FPS_FFTW_COMPLEX *fft_buffer = (0 == buffer_index) ? m_fft_buffer1 : m_fft_buffer2;
-
-    FPS_FFTW_COMPLEX *spectrum = (0 == buffer_index) ? m_spectrum1 : m_spectrum2;
-
-    size_t &number_of_ffts = (0 == buffer_index) ? m_number_of_ffts1 : m_number_of_ffts2;
-
-    int &buffer_head1 = 0 == (buffer_index) ? m_buffer_head11 : m_buffer_head21;
-    int &buffer_head2 = 0 == (buffer_index) ? m_buffer_head12 : m_buffer_head22;
-
-    for (size_t sample_index = 0; sample_index < number_of_samples; ++sample_index)
-    {
-      buffer1[buffer_head1][0] = buffer[sample_index] * m_window[buffer_head1];
-      buffer2[buffer_head2][0] = buffer[sample_index] * m_window[buffer_head2];
-
-      ++buffer_head1;
-      ++buffer_head2;
-
-      if (buffer_head1 >= (int)m_fft_size) {
-          // std::cout << "execute " << buffer_index << "-1\n";
-          FPS_FFTW_EXECUTE (fft_plan1);
-          for (size_t index = 0; index < m_fft_size; ++index) {
-              spectrum[index][0] += sqrt(pow(fft_buffer[index][0], 2) + pow(fft_buffer[index][1], 2));
-              spectrum[index][1] = 0;
-          }
-          ++number_of_ffts;
-          buffer_head1 = 0;
-      }
-
-      if (buffer_head2 >= (int)m_fft_size) {
-          // std::cout << "execute " << buffer_index << "-2\n";
-          FPS_FFTW_EXECUTE (fft_plan2);
-          for (size_t index = 0; index < m_fft_size; ++index) {
-              spectrum[index][0] += sqrt(pow(fft_buffer[index][0], 2) + pow(fft_buffer[index][1], 2));
-              spectrum[index][1] = 0;
-          }
-          ++number_of_ffts;
-          buffer_head2 = 0;
-      }
-    }
-  }
 
   void add_frames_to_buffer1 (const FPS_FLOAT *buffer, size_t number_of_samples)
   {
@@ -208,26 +160,6 @@ struct eq_match
     add_frames_to_buffer (1, buffer, number_of_samples);
   }
 
-  void reset_buffer (size_t buffer_index)
-  {
-    FPS_FFTW_COMPLEX *buffer1 = (0 == buffer_index) ? m_buffer11 : m_buffer21;
-    FPS_FFTW_COMPLEX *buffer2 = (0 == buffer_index) ? m_buffer12 : m_buffer22;
-
-    FPS_FFTW_COMPLEX *spectrum = (0 == buffer_index) ? m_spectrum1 : m_spectrum2;
-
-    size_t &number_of_ffts = (0 == buffer_index) ? m_number_of_ffts1 : m_number_of_ffts2;
-
-    int &buffer_head1 = 0 == (buffer_index) ? m_buffer_head11 : m_buffer_head21;
-    int &buffer_head2 = 0 == (buffer_index) ? m_buffer_head12 : m_buffer_head22;
-
-    memset(buffer1, 0, sizeof(FPS_FLOAT) * m_fft_size * 2);
-    memset(buffer2, 0, sizeof(FPS_FLOAT) * m_fft_size * 2);
-    memset(spectrum, 0, sizeof(FPS_FLOAT) * m_fft_size * 2);
-    buffer_head1 = 0;
-    buffer_head2 = m_fft_size/2;
-    number_of_ffts = 0;
-  }
-
   void reset_buffer1 ()
   {
     reset_buffer (0);
@@ -237,7 +169,6 @@ struct eq_match
   {
     reset_buffer (1);
   }
-
 
   void calculate_response ()
   {
@@ -343,6 +274,78 @@ struct eq_match
     std::cout << "\n";
     // for (size_t index = 0; index < m_fft_size/2; ++index) response[index + m_fft_size/2][0] = 0;
   }
+
+protected:
+  void add_frames_to_buffer (size_t buffer_index, const FPS_FLOAT *buffer, size_t number_of_samples)
+  {
+    FPS_FFTW_COMPLEX *buffer1 = (0 == buffer_index) ? m_buffer11 : m_buffer21;
+    FPS_FFTW_COMPLEX *buffer2 = (0 == buffer_index) ? m_buffer12 : m_buffer22;
+
+    FPS_FFTW_PLAN fft_plan1 = (0 == buffer_index) ? m_fft_plan11 : m_fft_plan21;
+    FPS_FFTW_PLAN fft_plan2 = (0 == buffer_index) ? m_fft_plan12 : m_fft_plan22;
+
+    FPS_FFTW_COMPLEX *fft_buffer = (0 == buffer_index) ? m_fft_buffer1 : m_fft_buffer2;
+
+    FPS_FFTW_COMPLEX *spectrum = (0 == buffer_index) ? m_spectrum1 : m_spectrum2;
+
+    size_t &number_of_ffts = (0 == buffer_index) ? m_number_of_ffts1 : m_number_of_ffts2;
+
+    int &buffer_head1 = 0 == (buffer_index) ? m_buffer_head11 : m_buffer_head21;
+    int &buffer_head2 = 0 == (buffer_index) ? m_buffer_head12 : m_buffer_head22;
+
+    for (size_t sample_index = 0; sample_index < number_of_samples; ++sample_index)
+    {
+      buffer1[buffer_head1][0] = buffer[sample_index] * m_window[buffer_head1];
+      buffer2[buffer_head2][0] = buffer[sample_index] * m_window[buffer_head2];
+
+      ++buffer_head1;
+      ++buffer_head2;
+
+      if (buffer_head1 >= (int)m_fft_size) {
+          // std::cout << "execute " << buffer_index << "-1\n";
+          FPS_FFTW_EXECUTE (fft_plan1);
+          for (size_t index = 0; index < m_fft_size; ++index) {
+              spectrum[index][0] += sqrt(pow(fft_buffer[index][0], 2) + pow(fft_buffer[index][1], 2));
+              spectrum[index][1] = 0;
+          }
+          ++number_of_ffts;
+          buffer_head1 = 0;
+      }
+
+      if (buffer_head2 >= (int)m_fft_size) {
+          // std::cout << "execute " << buffer_index << "-2\n";
+          FPS_FFTW_EXECUTE (fft_plan2);
+          for (size_t index = 0; index < m_fft_size; ++index) {
+              spectrum[index][0] += sqrt(pow(fft_buffer[index][0], 2) + pow(fft_buffer[index][1], 2));
+              spectrum[index][1] = 0;
+          }
+          ++number_of_ffts;
+          buffer_head2 = 0;
+      }
+    }
+  }
+
+  void reset_buffer (size_t buffer_index)
+  {
+    FPS_FFTW_COMPLEX *buffer1 = (0 == buffer_index) ? m_buffer11 : m_buffer21;
+    FPS_FFTW_COMPLEX *buffer2 = (0 == buffer_index) ? m_buffer12 : m_buffer22;
+
+    FPS_FFTW_COMPLEX *spectrum = (0 == buffer_index) ? m_spectrum1 : m_spectrum2;
+
+    size_t &number_of_ffts = (0 == buffer_index) ? m_number_of_ffts1 : m_number_of_ffts2;
+
+    int &buffer_head1 = 0 == (buffer_index) ? m_buffer_head11 : m_buffer_head21;
+    int &buffer_head2 = 0 == (buffer_index) ? m_buffer_head12 : m_buffer_head22;
+
+    memset(buffer1, 0, sizeof(FPS_FLOAT) * m_fft_size * 2);
+    memset(buffer2, 0, sizeof(FPS_FLOAT) * m_fft_size * 2);
+    memset(spectrum, 0, sizeof(FPS_FLOAT) * m_fft_size * 2);
+    buffer_head1 = 0;
+    buffer_head2 = m_fft_size/2;
+    number_of_ffts = 0;
+  }
+
+
 };
 
 #undef FPS_FFTW_COMPLEX
