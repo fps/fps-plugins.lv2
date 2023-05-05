@@ -371,6 +371,6 @@ protected:
 #undef FPS_FFTW_FREE
 #undef FPS_FFTW_DESTROY_PLAN
 #undef FPS_FFTW_EXECUTE
-
+#undef FPS_FLOAT
 
 #endif
