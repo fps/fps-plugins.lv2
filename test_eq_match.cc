@@ -3,7 +3,9 @@
 
 int main () 
 {
-  eq_match match (1024, 48000);
+  {
+    eq_match match (1024, 48000);
+  }
   fftwf_cleanup ();
 }
 
