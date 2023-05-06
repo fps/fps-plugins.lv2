@@ -1,6 +1,12 @@
 #ifndef FPS_PLUGINS_EQ_MATCH_HH
 #define FPS_PLUGINS_EQ_MATCH_HH
 
+#include <string.h>
+#include <fftw3.h>
+#include <cmath>
+#include <complex>
+#include <vector>
+
 /**
  * This whole class is not realtime safe!
  *
