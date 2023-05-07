@@ -1,0 +1,14 @@
+{
+   Ignore dlopen bug.
+   Memcheck:Leak
+   ...
+   fun:_dl_catch_exception
+   ...
+}
+{
+   Ignore dlopen bug.
+   Memcheck:Leak
+   ...
+   fun:_dl_open
+   ...
+}

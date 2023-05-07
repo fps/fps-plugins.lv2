@@ -16,7 +16,7 @@ plugin_state_t;
 
 static plugin_t* instantiate(plugin_t *instance, double sample_rate, const char *bundle_path, const LV2_Feature *const *features) 
 {
-    instance->state = new plugin_state_t;
+    instance->state = new plugin_state;
     instance->state->samplerate = sample_rate;
     instance->state->abs1 = 0;
     instance->state->abs2 = 0;

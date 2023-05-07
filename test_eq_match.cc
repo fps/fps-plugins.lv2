@@ -18,6 +18,6 @@ int main ()
 
     match.calculate_response ();
   }
-  fftwf_cleanup ();
+  // fftwf_cleanup ();
 }
 
