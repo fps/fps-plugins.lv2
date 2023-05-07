@@ -20,4 +20,5 @@ test: plugins
 	LV2_PATH=${PWD}/lv2 valgrind ${VALGRIND_FLAGS} lv2bench http://dfdx.eu/plugins/relative_dynamics
 	LV2_PATH=${PWD}/lv2 lv2info http://dfdx.eu/plugins/eq_match
 	LV2_PATH=${PWD}/lv2 valgrind ${VALGRIND_FLAGS} lv2bench http://dfdx.eu/plugins/eq_match
+	LV2_PATH=${PWD}/lv2 valgrind ${VALGRIND_FLAGS} ./test_eq_match
 
