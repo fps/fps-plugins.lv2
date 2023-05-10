@@ -22,7 +22,7 @@ typedef struct plugin_state
     m_buffer (100000),
     m_match (sample_rate, fft_size)
   {
-    m_convolver.init (BLOCK_SIZE, m_match.m_response, FFT_SIZE);
+    m_convolver.init (BLOCK_SIZE, m_match.m_minimum_phase_response, FFT_SIZE);
   }
 
   std::vector<float> m_buffer;
@@ -87,7 +87,7 @@ static void run
     {
       tinstance->m_convolver.reset ();
       tinstance->m_match.calculate_response ();
-      tinstance->m_convolver.init (BLOCK_SIZE,  tinstance->m_match.m_response, FFT_SIZE);
+      tinstance->m_convolver.init (BLOCK_SIZE,  tinstance->m_match.m_minimum_phase_response, FFT_SIZE);
     }
 
     if (analyze1.data > 0)
