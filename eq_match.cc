@@ -100,37 +100,11 @@ static void run
       tinstance->m_match.add_frames_to_buffer2 (in.data, nframes);
     }
 
-    /*
-    for(uint32_t sample_index = 0; sample_index < nframes; ++sample_index)
-    {
-      tinstance->m_convolution_buffer[tinstance->m_convolution_buffer_head] = in.data[sample_index];
-
-      out.data[sample_index] = in.data[sample_index];
-
-      if (apply.data > 0)
-      {
-          out.data[sample_index] = 0;
-          for (size_t index = 0; index < FFT_SIZE; ++index)
-          {
-              out.data[sample_index] += tinstance->m_match.m_minimum_phase_response[index] * tinstance->m_convolution_buffer[(tinstance->m_convolution_buffer_head + index) % FFT_SIZE];
-          }
-      }
-
-      if (tinstance->m_convolution_buffer_head == 0)
-      {
-        tinstance->m_convolution_buffer_head = FFT_SIZE - 1;
-      }
-      else
-      {
-        --tinstance->m_convolution_buffer_head;
-      }
-    }
-    */
-
     if (apply.data > 0)
     {
-      tinstance->m_convolver.process (in.data, &tinstance->m_buffer[0], nframes);
-      memcpy (out.data, &tinstance->m_buffer[0], nframes * sizeof(float));
+      // tinstance->m_convolver.process (in.data, &tinstance->m_buffer[0], nframes);
+      // memcpy (out.data, &tinstance->m_buffer[0], nframes * sizeof(float));
+      tinstance->m_convolver.process (in.data, out.data, nframes);
     }
     else
     {
