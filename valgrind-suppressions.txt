@@ -12,3 +12,10 @@
    fun:_dl_open
    ...
 }
+{
+   Ignore memalign
+   Memcheck:Leak
+   ...
+   fun:memalign
+   ...
+}
