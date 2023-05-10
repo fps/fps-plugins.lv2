@@ -19,10 +19,13 @@
 typedef struct plugin_state
 {
   plugin_state (float sample_rate, size_t fft_size) :
+    m_buffer (100000),
     m_match (sample_rate, fft_size)
   {
-    m_convolver.init (BLOCK_SIZE, &m_match.m_response[0], FFT_SIZE);
+    m_convolver.init (BLOCK_SIZE, m_match.m_response, FFT_SIZE);
   }
+
+  std::vector<float> m_buffer;
 
   eq_match m_match;
 
@@ -82,7 +85,9 @@ static void run
 
     if ((previous_analyze1 && !(analyze1.data > 0)) || (previous_analyze2 && !(analyze2.data > 0)))
     {
+      tinstance->m_convolver.reset ();
       tinstance->m_match.calculate_response ();
+      tinstance->m_convolver.init (BLOCK_SIZE,  tinstance->m_match.m_response, FFT_SIZE);
     }
 
     if (analyze1.data > 0)
@@ -121,9 +126,15 @@ static void run
       }
     }
     */
+
     if (apply.data > 0)
     {
-      tinstance->m_convolver.process (in.data, out.data, nframes);
+      tinstance->m_convolver.process (in.data, &tinstance->m_buffer[0], nframes);
+      memcpy (out.data, &tinstance->m_buffer[0], nframes * sizeof(float));
+    }
+    else
+    {
+      memcpy (out.data, in.data, nframes * sizeof (float));
     }
 
     tinstance->m_previous_analyze1 = analyze1.data > 0;
