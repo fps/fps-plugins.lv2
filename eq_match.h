@@ -97,8 +97,8 @@ struct eq_match
   FPS_FFTW_COMPLEX *m_fft_buffer4;
   FPS_FFTW_COMPLEX *m_fft_buffer5;
 
-  FPS_FFTW_COMPLEX *m_response;
-  FPS_FFTW_COMPLEX *m_minimum_phase_response;
+  FPS_FLOAT *m_response;
+  FPS_FLOAT *m_minimum_phase_response;
 
   eq_match (size_t fft_size, FPS_FLOAT sample_rate) :
     m_fft_size (fft_size),
@@ -144,9 +144,9 @@ struct eq_match
 
     m_ifft_plan = FPS_FFTW_PLAN_DFT(fft_size, m_fft_buffer3, m_fft_buffer4, FFTW_BACKWARD, FFTW_ESTIMATE);
 
-    m_response = (FPS_FFTW_COMPLEX*)FPS_FFTW_ALLOC_COMPLEX (fft_size);
+    m_response = (FPS_FLOAT*)malloc (sizeof(FPS_FLOAT) * fft_size);
 
-    m_minimum_phase_response = (FPS_FFTW_COMPLEX*)FPS_FFTW_ALLOC_COMPLEX (fft_size);
+    m_minimum_phase_response = (FPS_FLOAT*)malloc (sizeof(FPS_FLOAT) * fft_size);
 }
 
   ~eq_match ()
@@ -173,8 +173,8 @@ struct eq_match
     FPS_FFTW_FREE (m_fft_buffer4);
     FPS_FFTW_FREE (m_fft_buffer5);
 
-    FPS_FFTW_FREE (m_response);
-    FPS_FFTW_FREE (m_minimum_phase_response);
+    free (m_response);
+    free (m_minimum_phase_response);
   }
 
 
@@ -232,7 +232,7 @@ struct eq_match
     for (size_t index = 0; index < m_fft_size; ++index)
     {
       m_fft_buffer4[index][0] /= m_fft_size;
-      m_response[index][0] = m_fft_buffer4[index][0];
+      m_response[index] = m_fft_buffer4[index][0];
     }
 
     DBG("ifft: ")
@@ -293,7 +293,7 @@ struct eq_match
 
     // ifftshift
     // for (size_t index = 0; index < m_fft_size; ++index) response[index][0] = fft_buffer4[(index + m_fft_size/2) % m_fft_size][0];
-    for (size_t index = 0; index < m_fft_size; ++index) m_minimum_phase_response[index][0] = m_fft_buffer4[index][0];
+    for (size_t index = 0; index < m_fft_size; ++index) m_minimum_phase_response[index] = m_fft_buffer4[index][0];
 
     DBG("response: ")
     for (size_t index = 0; index < m_fft_size; ++index) DBG(m_minimum_phase_response[index][0] << " ")

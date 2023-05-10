@@ -7,23 +7,29 @@
 #include <iostream>
 #include <complex>
 
+#include <FFTConvolver/FFTConvolver.h>
+
 #define FPS_PLUGINS_EQ_MATCH_FLOATING_POINT_TYPE float
 #include "eq_match.h"
 
 #define FFT_SIZE 2048
+
+#define BLOCK_SIZE 32
 
 typedef struct plugin_state
 {
   plugin_state (float sample_rate, size_t fft_size) :
     m_match (sample_rate, fft_size)
   {
-
+    m_convolver.init (BLOCK_SIZE, &m_match.m_response[0], FFT_SIZE);
   }
 
   eq_match m_match;
 
   bool m_previous_analyze1;
   bool m_previous_analyze2;
+
+  fftconvolver::FFTConvolver m_convolver;
 
   std::vector<float> m_convolution_buffer;
   size_t m_convolution_buffer_head;
@@ -89,6 +95,7 @@ static void run
       tinstance->m_match.add_frames_to_buffer2 (in.data, nframes);
     }
 
+    /*
     for(uint32_t sample_index = 0; sample_index < nframes; ++sample_index)
     {
       tinstance->m_convolution_buffer[tinstance->m_convolution_buffer_head] = in.data[sample_index];
@@ -100,7 +107,7 @@ static void run
           out.data[sample_index] = 0;
           for (size_t index = 0; index < FFT_SIZE; ++index)
           {
-              out.data[sample_index] += tinstance->m_match.m_minimum_phase_response[index][0] * tinstance->m_convolution_buffer[(tinstance->m_convolution_buffer_head + index) % FFT_SIZE];
+              out.data[sample_index] += tinstance->m_match.m_minimum_phase_response[index] * tinstance->m_convolution_buffer[(tinstance->m_convolution_buffer_head + index) % FFT_SIZE];
           }
       }
 
@@ -112,6 +119,11 @@ static void run
       {
         --tinstance->m_convolution_buffer_head;
       }
+    }
+    */
+    if (apply.data > 0)
+    {
+      tinstance->m_convolver.process (in.data, out.data, nframes);
     }
 
     tinstance->m_previous_analyze1 = analyze1.data > 0;
