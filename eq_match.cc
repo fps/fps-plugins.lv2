@@ -25,26 +25,18 @@ typedef struct plugin_state
     m_convolver.init (BLOCK_SIZE, m_match.m_minimum_phase_response, FFT_SIZE);
   }
 
-  std::vector<float> m_buffer;
-
   eq_match m_match;
 
   bool m_previous_analyze1;
   bool m_previous_analyze2;
 
   fftconvolver::FFTConvolver m_convolver;
-
-  std::vector<float> m_convolution_buffer;
-  size_t m_convolution_buffer_head;
 }
 plugin_state_t;
 
 static plugin_t* instantiate(plugin_t *instance, double sample_rate, const char *bundle_path, const LV2_Feature *const *features)
 {
     instance->state = new plugin_state_t (FFT_SIZE, sample_rate);
-
-    instance->state->m_convolution_buffer.resize(FFT_SIZE, 0);
-    instance->state->m_convolution_buffer_head = FFT_SIZE - 1;
 
     instance->state->m_previous_analyze1 = false;
     instance->state->m_previous_analyze2 = false;
@@ -102,8 +94,6 @@ static void run
 
     if (apply.data > 0)
     {
-      // tinstance->m_convolver.process (in.data, &tinstance->m_buffer[0], nframes);
-      // memcpy (out.data, &tinstance->m_buffer[0], nframes * sizeof(float));
       tinstance->m_convolver.process (in.data, out.data, nframes);
     }
     else
