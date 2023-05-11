@@ -40,7 +40,12 @@ typedef struct plugin_state
 }
 plugin_state_t;
 
-static plugin_t* instantiate(plugin_t *instance, double sample_rate, const char *bundle_path, const LV2_Feature *const *features)
+static plugin_t* instantiate
+(
+  plugin_t *instance, double sample_rate,
+  const char *bundle_path,
+  const LV2_Feature *const *features
+)
 {
     instance->state = new plugin_state_t (FFT_SIZE, sample_rate);
     return instance;
