@@ -19,10 +19,15 @@
 typedef struct plugin_state
 {
   plugin_state (float sample_rate, size_t fft_size) :
-    m_match (sample_rate, fft_size)
+    m_match (sample_rate, fft_size),
+    m_previous_analyze1 (false),
+    m_previous_analyze2 (false)
   {
-    m_linear_phase_convolver.init (BLOCK_SIZE, m_match.m_minimum_phase_response, FFT_SIZE);
-    m_minimum_phase_convolver.init (BLOCK_SIZE, m_match.m_minimum_phase_response, FFT_SIZE);
+    m_linear_phase_convolver.init
+      (BLOCK_SIZE, m_match.m_minimum_phase_response, FFT_SIZE);
+
+    m_minimum_phase_convolver.init
+      (BLOCK_SIZE, m_match.m_minimum_phase_response, FFT_SIZE);
   }
 
   eq_match m_match;
@@ -38,10 +43,6 @@ plugin_state_t;
 static plugin_t* instantiate(plugin_t *instance, double sample_rate, const char *bundle_path, const LV2_Feature *const *features)
 {
     instance->state = new plugin_state_t (FFT_SIZE, sample_rate);
-
-    instance->state->m_previous_analyze1 = false;
-    instance->state->m_previous_analyze2 = false;
-
     return instance;
 }
 
@@ -83,8 +84,11 @@ static void run
 
       tinstance->m_match.calculate_response ();
 
-      tinstance->m_linear_phase_convolver.init (BLOCK_SIZE,  tinstance->m_match.m_linear_phase_response, FFT_SIZE);
-      tinstance->m_minimum_phase_convolver.init (BLOCK_SIZE,  tinstance->m_match.m_minimum_phase_response, FFT_SIZE);
+      tinstance->m_linear_phase_convolver.init
+        (BLOCK_SIZE,  tinstance->m_match.m_linear_phase_response, FFT_SIZE);
+
+      tinstance->m_minimum_phase_convolver.init
+        (BLOCK_SIZE,  tinstance->m_match.m_minimum_phase_response, FFT_SIZE);
     }
 
     if (analyze1.data > 0)
@@ -111,6 +115,12 @@ static void run
     else
     {
       memcpy (out.data, in.data, nframes * sizeof (float));
+    }
+
+    const float gain_factor = pow(10, gain.data/20);
+    for (size_t index = 0; index < nframes; ++index)
+    {
+      out.data[index] *= gain_factor;
     }
 
     tinstance->m_previous_analyze1 = analyze1.data > 0;

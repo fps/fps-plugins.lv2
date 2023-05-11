@@ -1,8 +1,8 @@
 .PHONY: all
 
 # CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g -I .
-CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g3 -I .
-# CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g3 -DNDEBUG -I .
+# CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g3 -I .
+CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g3 -DNDEBUG -I .
 VALGRIND_FLAGS ?= --suppressions=valgrind-suppressions.txt  --leak-check=full --show-leak-kinds=all
 
 all: plugins
