@@ -247,10 +247,15 @@ struct eq_match
     for (size_t index = 0; index < m_fft_size; ++index)
     {
       m_fft_buffer4[index][0] /= m_fft_size;
+    }
+
+    // IFFT-shift
+    for (size_t index = 0; index < m_fft_size; ++index)
+    {
       m_linear_phase_response[(index + (m_fft_size/2)) % m_fft_size] = m_fft_buffer4[index][0];
     }
 
-        // exp(fft(fold(ifft(log(s)))))
+    // exp(fft(fold(ifft(log(s)))))
     for (size_t index = 0; index < m_fft_size; ++index) {
       m_fft_buffer3[index][0] = log(m_fft_buffer3[index][0]);
     }
@@ -376,12 +381,12 @@ protected:
     memset(buffer1, 0, sizeof(FPS_FLOAT) * m_fft_size * 2);
     memset(buffer2, 0, sizeof(FPS_FLOAT) * m_fft_size * 2);
     memset(spectrum, 0, sizeof(FPS_FLOAT) * m_fft_size * 2);
+
     buffer_head1 = 0;
     buffer_head2 = m_fft_size/2;
+
     number_of_ffts = 0;
   }
-
-
 };
 
 #undef FPS_FFTW_COMPLEX
