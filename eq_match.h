@@ -15,8 +15,8 @@
  * (1) Construct an object of type eq_match
  * (2) Call reset_buffer1 () to reset the spectrum estimation buffer1
  * (3) Call add_frames_to_buffer1 consecutively to estimate spectrum1
- * (4) Call reset_buffer2 () to reset the spectrum estimation buffer1
- * (5) Call add_frames_to_buffer2 consecutively to estimate spectrum1
+ * (4) Call reset_buffer2 () to reset the spectrum estimation buffer2
+ * (5) Call add_frames_to_buffer2 consecutively to estimate spectrum2
  * (6) Call calculate_response ()
  * (7) Get the calculated IRs from m_response (linear phase) or
  *     m_minimum_phase_response (which is minimum phase)
@@ -24,14 +24,14 @@
  * You need to provide a macro definition for the floating
  * point type used. e.g.
  *
- *   #define FPS_PLUGINS_EQ_MATCH_FLOATING_POINT_TYPE float
+ *   #define EQ_MATCH_FLOAT float
  *
  * or
  *
- *   #define FPS_PLUGINS_EQ_MATCH_FLOATING_POINT_TYPE double
+ *   #define EQ_MATCH_FLOAT double
  */
 
-#if FPS_PLUGINS_EQ_MATCH_FLOATING_POINT_TYPE == float
+#if EQ_MATCH_FLOAT == float
   #define FPS_FFTW_COMPLEX fftwf_complex
   #define FPS_FFTW_PLAN fftwf_plan
   #define FPS_FFTW_PLAN_DFT fftwf_plan_dft_1d
@@ -39,7 +39,7 @@
   #define FPS_FFTW_FREE fftwf_free
   #define FPS_FFTW_DESTROY_PLAN fftwf_destroy_plan
   #define FPS_FFTW_EXECUTE fftwf_execute
-#elif FPS_PLUGINS_EQ_MATCH_FLOATING_POINT_TYPE == double
+#elif EQ_MATCH_FLOAT == double
   #define FPS_FFTW_COMPLEX fftw_complex
   #define FPS_FFTW_PLAN fftw_plan
   #define FPS_FFTW_PLAN_DFT fftw_plan_dft_1d
@@ -48,10 +48,10 @@
   #define FPS_FFTW_DESTROY_PLAN fftw_destroy_plan
   #define FPS_FFTW_EXECUTE fftw_execute
 #else
-  #error "Unexpected value of FPS_PLUGINS_EQ_MATCH_FLOATING_POINT_TYPE"
+  #error "Unexpected value of EQ_MATCH_FLOAT"
 #endif
 
-#define FPS_FLOAT FPS_PLUGINS_EQ_MATCH_FLOATING_POINT_TYPE
+#define FPS_FLOAT EQ_MATCH_FLOAT
 
 #ifdef NDEBUG
   #define DBG(x) {}
@@ -60,7 +60,10 @@
 
   #define DBG_COMPLEX_VECTOR(prefix, x, len) {}
 #else
-  #define DBG(x) {std::cerr << x;}
+  #define DBG(x) \
+  {\
+    std::cerr << x;\
+  }
 
   #define DBG_REAL_VECTOR(prefix, x, len) \
   { \

@@ -1,4 +1,4 @@
-#define FPS_PLUGINS_EQ_MATCH_FLOATING_POINT_TYPE float
+#define EQ_MATCH_FLOAT float
 #include "eq_match.h"
 
 int main () 

@@ -1,15 +1,8 @@
 #include "generated/ttl2c_eq_match.h"
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
-#include <vector>
-#include <fftw3.h>
-#include <iostream>
-#include <complex>
 
 #include <FFTConvolver/FFTConvolver.h>
 
-#define FPS_PLUGINS_EQ_MATCH_FLOATING_POINT_TYPE float
+#define EQ_MATCH_FLOAT float
 #include "eq_match.h"
 
 #define FFT_SIZE 2048
