@@ -19,10 +19,10 @@
 typedef struct plugin_state
 {
   plugin_state (float sample_rate, size_t fft_size) :
-    m_buffer (100000),
     m_match (sample_rate, fft_size)
   {
-    m_convolver.init (BLOCK_SIZE, m_match.m_minimum_phase_response, FFT_SIZE);
+    m_linear_phase_convolver.init (BLOCK_SIZE, m_match.m_minimum_phase_response, FFT_SIZE);
+    m_minimum_phase_convolver.init (BLOCK_SIZE, m_match.m_minimum_phase_response, FFT_SIZE);
   }
 
   eq_match m_match;
@@ -30,7 +30,8 @@ typedef struct plugin_state
   bool m_previous_analyze1;
   bool m_previous_analyze2;
 
-  fftconvolver::FFTConvolver m_convolver;
+  fftconvolver::FFTConvolver m_linear_phase_convolver;
+  fftconvolver::FFTConvolver m_minimum_phase_convolver;
 }
 plugin_state_t;
 
@@ -57,7 +58,7 @@ static void run
     plugin_t *instance, uint32_t nframes, 
     const plugin_port_in_t in, const plugin_port_out_t out, 
     const plugin_port_analyze1_t analyze1, const plugin_port_analyze2_t analyze2, 
-    const plugin_port_apply_t apply, const plugin_port_gain_t gain
+    const plugin_port_apply_t apply, const plugin_port_minimum_phase_t minimum_phase, const plugin_port_gain_t gain
 )
 {
     plugin_state_t *tinstance = instance->state;
@@ -77,9 +78,13 @@ static void run
 
     if ((previous_analyze1 && !(analyze1.data > 0)) || (previous_analyze2 && !(analyze2.data > 0)))
     {
-      tinstance->m_convolver.reset ();
+      tinstance->m_linear_phase_convolver.reset ();
+      tinstance->m_minimum_phase_convolver.reset ();
+
       tinstance->m_match.calculate_response ();
-      tinstance->m_convolver.init (BLOCK_SIZE,  tinstance->m_match.m_minimum_phase_response, FFT_SIZE);
+
+      tinstance->m_linear_phase_convolver.init (BLOCK_SIZE,  tinstance->m_match.m_linear_phase_response, FFT_SIZE);
+      tinstance->m_minimum_phase_convolver.init (BLOCK_SIZE,  tinstance->m_match.m_minimum_phase_response, FFT_SIZE);
     }
 
     if (analyze1.data > 0)
@@ -94,7 +99,14 @@ static void run
 
     if (apply.data > 0)
     {
-      tinstance->m_convolver.process (in.data, out.data, nframes);
+      if (minimum_phase.data > 0)
+      {
+        tinstance->m_minimum_phase_convolver.process (in.data, out.data, nframes);
+      }
+      else
+      {
+        tinstance->m_linear_phase_convolver.process (in.data, out.data, nframes);
+      }
     }
     else
     {

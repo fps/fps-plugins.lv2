@@ -6,6 +6,7 @@
 #include <cmath>
 #include <complex>
 #include <vector>
+#include <iostream>
 
 /**
  * This whole class is not realtime safe!
@@ -53,10 +54,40 @@
 #define FPS_FLOAT FPS_PLUGINS_EQ_MATCH_FLOATING_POINT_TYPE
 
 #ifdef NDEBUG
-#define DBG(x) {}
+  #define DBG(x) {}
+
+  #define DBG_REAL_VECTOR(prefix, x, len) {}
+
+  #define DBG_COMPLEX_VECTOR(prefix, x, len) {}
 #else
-#define DBG(x) {std::cerr << x;}
+  #define DBG(x) {std::cerr << x;}
+
+  #define DBG_REAL_VECTOR(prefix, x, len) \
+  { \
+    std::cerr << prefix << " "; \
+    for (size_t index = 0; index < len; ++index) \
+    { \
+      std::cerr << x[index] << " "; \
+    } \
+    std::cerr << "\n";\
+  }
+
+  #define DBG_COMPLEX_VECTOR(prefix, x, len) \
+    { \
+      std::cerr << prefix << " real: "; \
+      for (size_t index = 0; index < len; ++index) \
+      { \
+        std::cerr << x[index][0] << " ";\
+      } \
+      std::cerr << "\n"; std::cerr << prefix << " imag: "; \
+      for (size_t index = 0; index < len; ++index) \
+      { \
+        std::cerr << x[index][1] << " "; \
+      } \
+      std::cerr << "\n";\
+    }
 #endif
+
 
 struct eq_match
 {
@@ -97,7 +128,7 @@ struct eq_match
   FPS_FFTW_COMPLEX *m_fft_buffer4;
   FPS_FFTW_COMPLEX *m_fft_buffer5;
 
-  FPS_FLOAT *m_response;
+  FPS_FLOAT *m_linear_phase_response;
   FPS_FLOAT *m_minimum_phase_response;
 
   eq_match (size_t fft_size, FPS_FLOAT sample_rate) :
@@ -144,9 +175,11 @@ struct eq_match
 
     m_ifft_plan = FPS_FFTW_PLAN_DFT(fft_size, m_fft_buffer3, m_fft_buffer4, FFTW_BACKWARD, FFTW_ESTIMATE);
 
-    m_response = (FPS_FLOAT*)malloc (sizeof(FPS_FLOAT) * fft_size);
+    m_linear_phase_response = (FPS_FLOAT*)malloc (sizeof(FPS_FLOAT) * fft_size);
+    memset(m_linear_phase_response, 0, sizeof(FPS_FLOAT) * fft_size);
 
     m_minimum_phase_response = (FPS_FLOAT*)malloc (sizeof(FPS_FLOAT) * fft_size);
+    memset(m_minimum_phase_response, 0, sizeof(FPS_FLOAT) * fft_size);
 }
 
   ~eq_match ()
@@ -173,7 +206,7 @@ struct eq_match
     FPS_FFTW_FREE (m_fft_buffer4);
     FPS_FFTW_FREE (m_fft_buffer5);
 
-    free (m_response);
+    free (m_linear_phase_response);
     free (m_minimum_phase_response);
   }
 
@@ -200,31 +233,29 @@ struct eq_match
 
   void calculate_response ()
   {
-    DBG("spectrum1: ")
-    for (size_t index = 0; index < m_fft_size; ++index) DBG(m_spectrum1[index][0] << " ")
-    DBG("\nspectrum2: ")
-    for (size_t index = 0; index < m_fft_size; ++index) DBG(m_spectrum2[index][0] << " ")
-    DBG("\n\n")
+    DBG_COMPLEX_VECTOR("spectrum1:", m_spectrum1, m_fft_size)
+    DBG_COMPLEX_VECTOR("spectrum2:", m_spectrum2, m_fft_size)
 
     for (size_t index = 0; index < m_fft_size; ++index) {
       m_fft_buffer3[index][0] = ((m_spectrum2[index][0] / m_number_of_ffts2) / (m_spectrum1[index][0] / m_number_of_ffts1));
       m_fft_buffer3[index][1] = 0;
     }
 
-    DBG("ratio: ")
-    for (size_t index = 0; index < m_fft_size; ++index) DBG(m_fft_buffer3[index][0] << " ")
-    DBG("\n\n")
+    DBG_COMPLEX_VECTOR("ratio:", m_fft_buffer3, m_fft_size)
 
-    // exp(fft(fold(ifft(log(s)))))
+    FPS_FFTW_EXECUTE(m_ifft_plan);
+    for (size_t index = 0; index < m_fft_size; ++index)
+    {
+      m_fft_buffer4[index][0] /= m_fft_size;
+      m_linear_phase_response[(index + (m_fft_size/2)) % m_fft_size] = m_fft_buffer4[index][0];
+    }
+
+        // exp(fft(fold(ifft(log(s)))))
     for (size_t index = 0; index < m_fft_size; ++index) {
       m_fft_buffer3[index][0] = log(m_fft_buffer3[index][0]);
     }
 
-    DBG("log: ")
-    for (size_t index = 0; index < m_fft_size; ++index) DBG(m_fft_buffer3[index][0] << " ")
-    DBG("\n\n")
-
-    DBG(m_fft_buffer3[0][0] << "\n")
+    DBG_COMPLEX_VECTOR("log:", m_fft_buffer3, m_fft_size)
 
     // 3 -> 4
     FPS_FFTW_EXECUTE(m_ifft_plan);
@@ -232,14 +263,9 @@ struct eq_match
     for (size_t index = 0; index < m_fft_size; ++index)
     {
       m_fft_buffer4[index][0] /= m_fft_size;
-      m_response[index] = m_fft_buffer4[index][0];
     }
 
-    DBG("ifft: ")
-    for (size_t index = 0; index < m_fft_size; ++index) DBG(m_fft_buffer4[index][0] << " ")
-    DBG("\n\n")
-
-    DBG(m_fft_buffer4[0][0] << " " << m_fft_buffer4[0][1] << "\n")
+    DBG_COMPLEX_VECTOR("ifft:", m_fft_buffer4, m_fft_size)
 
     // fold
     for (size_t index = 0; index < m_fft_size; ++index) {
@@ -261,16 +287,10 @@ struct eq_match
       }
     }
 
-    DBG("fold: ")
-    for (size_t index = 0; index < m_fft_size; ++index) DBG(m_fft_buffer3[index][0] << " ")
-    DBG("\n\n")
-
-    DBG(m_fft_buffer3[0][0] << "\n")
+    DBG_COMPLEX_VECTOR("fold:", m_fft_buffer3, m_fft_size)
 
     // 3 -> 5
     FPS_FFTW_EXECUTE (m_fft_plan);
-
-    DBG(m_fft_buffer5[0][0] << " " << m_fft_buffer5[0][1] << "\n")
 
     for (size_t index = 0; index < m_fft_size; ++index) {
       std::complex<FPS_FLOAT> c(m_fft_buffer5[index][0], m_fft_buffer5[index][1]);
@@ -279,28 +299,16 @@ struct eq_match
       m_fft_buffer3[index][1] = std::imag(c2);
     }
 
-    DBG("exp: ")
-    for (size_t index = 0; index < m_fft_size; ++index) DBG(m_fft_buffer3[index][0] << " ")
-    DBG("\n\n")
-    for (size_t index = 0; index < m_fft_size; ++index) DBG(m_fft_buffer3[index][1] << " ")
-    DBG("\n\n")
-
-    DBG(m_fft_buffer3[0][0] << "\n")
+    DBG_COMPLEX_VECTOR("exp:", m_fft_buffer3, m_fft_size)
 
     // 3 -> 4
     FPS_FFTW_EXECUTE (m_ifft_plan);
     for (size_t index = 0; index < m_fft_size; ++index) m_fft_buffer4[index][0] /= m_fft_size;
 
-    // ifftshift
-    // for (size_t index = 0; index < m_fft_size; ++index) response[index][0] = fft_buffer4[(index + m_fft_size/2) % m_fft_size][0];
     for (size_t index = 0; index < m_fft_size; ++index) m_minimum_phase_response[index] = m_fft_buffer4[index][0];
 
-    DBG("response: ")
-    for (size_t index = 0; index < m_fft_size; ++index) DBG(m_minimum_phase_response[index][0] << " ")
-    DBG("\n")
-    for (size_t index = 0; index < m_fft_size; ++index) DBG(m_minimum_phase_response[index][1] << " ")
-    DBG("\n")
-    // for (size_t index = 0; index < m_fft_size/2; ++index) response[index + m_fft_size/2][0] = 0;
+    DBG_REAL_VECTOR("linear phase response:", m_linear_phase_response, m_fft_size)
+    DBG_REAL_VECTOR("minimum phase response:", m_minimum_phase_response, m_fft_size)
   }
 
 protected:

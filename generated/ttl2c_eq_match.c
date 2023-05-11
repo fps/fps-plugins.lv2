@@ -11,7 +11,7 @@ static void plugin_connect_port_desc (LV2_Handle instance, uint32_t port, void *
     } 
     else 
     {
-        if (port < 6) 
+        if (port < 7) 
         {
             (tinstance)->ports[port] = data_location;
         }
@@ -83,9 +83,10 @@ static void plugin_run_desc (LV2_Handle instance, uint32_t sample_count)
         plugin_port_analyze1_t const analyze1 = { .data = ((float*)((plugin_t*)instance)->ports[2])[0] };
         plugin_port_analyze2_t const analyze2 = { .data = ((float*)((plugin_t*)instance)->ports[3])[0] };
         plugin_port_apply_t const apply = { .data = ((float*)((plugin_t*)instance)->ports[4])[0] };
-        plugin_port_gain_t const gain = { .data = ((float*)((plugin_t*)instance)->ports[5])[0] };
+        plugin_port_minimum_phase_t const minimum_phase = { .data = ((float*)((plugin_t*)instance)->ports[5])[0] };
+        plugin_port_gain_t const gain = { .data = ((float*)((plugin_t*)instance)->ports[6])[0] };
 
-        plugin_callbacks.run (tinstance, sample_count, in, out, analyze1, analyze2, apply, gain);
+        plugin_callbacks.run (tinstance, sample_count, in, out, analyze1, analyze2, apply, minimum_phase, gain);
     }
 }
 

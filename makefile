@@ -1,7 +1,8 @@
 .PHONY: all
 
 # CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g -I .
-CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g3 -DNDEBUG -I .
+CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g3 -I .
+# CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g3 -DNDEBUG -I .
 VALGRIND_FLAGS ?= --suppressions=valgrind-suppressions.txt  --leak-check=full --show-leak-kinds=all
 
 all: plugins
@@ -14,7 +15,7 @@ generate:
 lv2/fps-plugins.lv2/dynamics.so: dynamics.cc
 	g++ -std=c++20 ${CXX_EXTRA_FLAGS} dynamics.cc -pedantic -Wall -Werror -shared -o lv2/fps-plugins.lv2/dynamics.so
 
-lv2/fps-plugins.lv2/eq_match.so: eq_match.cc eq_match.h
+lv2/fps-plugins.lv2/eq_match.so: eq_match.cc eq_match.h lv2/fps-plugins.lv2/eq_match.ttl
 	g++ -std=c++20 ${CXX_EXTRA_FLAGS} eq_match.cc FFTConvolver/AudioFFT.cpp FFTConvolver/Utilities.cpp FFTConvolver/FFTConvolver.cpp -pedantic -Wall -Werror -shared -o lv2/fps-plugins.lv2/eq_match.so -lfftw3f -lm
 
 test: plugins
