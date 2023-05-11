@@ -7,6 +7,8 @@
 #include <lv2/atom/atom.h>
 #include <lv2/atom/util.h>
 #include <lv2/midi/midi.h>
+#include <lv2/state/state.h>
+#include <lv2/worker/worker.h>
 
 #include <stdint.h>
 #include <stdlib.h>

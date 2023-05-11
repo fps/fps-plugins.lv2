@@ -1,3 +1,5 @@
+#include <lv2/state/state.h>
+
 #include "generated/ttl2c_eq_match.h"
 
 #include <FFTConvolver/FFTConvolver.h>
@@ -125,10 +127,100 @@ static void run
     tinstance->m_previous_analyze2 = analyze2.data > 0;
 }
 
+#define EQ_MATCH_STATE_SAMPLERATE "https://dfdx.eu/fps-plugins.lv2/eq_match#samplerate"
+
+static LV2_State_Status save_state
+(
+  LV2_Handle instance,
+  LV2_State_Store_Function store,
+  LV2_State_Handle handle,
+  uint32_t flags,
+  const LV2_Feature *const *features
+)
+{
+  std::cerr << "save state\n";
+  // plugin_t *pinstance = ((plugin_t*)instance);
+  // std::cerr << pinstance->map (
+  //store (handle,
+  return LV2_STATE_SUCCESS;
+}
+
+static LV2_State_Status restore_state
+(
+  LV2_Handle instance,
+  LV2_State_Retrieve_Function retrieve,
+  LV2_State_Handle handle,
+  uint32_t flags,
+  const LV2_Feature *const *features
+)
+{
+  std::cerr << "restore state\n";
+  return LV2_STATE_SUCCESS;
+}
+
+static LV2_State_Interface state_interface =
+{
+  .save = save_state,
+  .restore = restore_state,
+};
+
+LV2_Worker_Status work
+(
+  LV2_Handle instance,
+  LV2_Worker_Respond_Function respond,
+  LV2_Worker_Respond_Handle handle,
+  uint32_t size,
+  const void *data
+)
+{
+  return LV2_WORKER_SUCCESS;
+}
+
+LV2_Worker_Status work_response
+(
+  LV2_Handle instance,
+  uint32_t size,
+  const void *body
+)
+{
+  return LV2_WORKER_SUCCESS;
+}
+
+LV2_Worker_Status end_run(LV2_Handle instance)
+{
+  return LV2_WORKER_SUCCESS;
+}
+
+static LV2_Worker_Interface worker_interface =
+{
+  .work = work,
+  .work_response = work_response,
+  .end_run = end_run,
+};
+
+static const void *extension_data (const char *uri)
+{
+  std::cerr << "get extension_data. URI: " << uri << "\n";
+  if (std::string(uri) == LV2_STATE__interface)
+  {
+    std::cerr << "get extension data for state\n";
+    return &state_interface;
+  }
+
+  if (std::string(uri) == LV2_WORKER__interface)
+  {
+    std::cerr << "get extension data for worker\n";
+    return &worker_interface;
+  }
+
+  return 0;
+}
+
 static const plugin_callbacks_t plugin_callbacks = {
     .instantiate = instantiate,
     .run = run,
     .cleanup = cleanup,
+    .extension_data = extension_data,
 };
 
 #include "generated/ttl2c_eq_match.c"
