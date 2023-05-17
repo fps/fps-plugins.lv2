@@ -91,6 +91,43 @@
     }
 #endif
 
+struct dft
+{
+  const size_t m_size;
+
+  FPS_FFTW_COMPLEX *m_in;
+  FPS_FFTW_COMPLEX *m_out;
+  FPS_FFTW_PLAN m_plan_forward;
+  FPS_FFTW_PLAN m_plan_backward;
+
+  dft (const size_t size) :
+    m_size (size)
+  {
+
+  }
+
+  void fft (FPS_FFTW_COMPLEX *in, FPS_FFTW_COMPLEX *out, bool forward = true)
+  {
+    for (size_t index = 0; index < m_size; ++index)
+    {
+      m_in[index][0] = in[index][0];
+      m_in[index][1] = in[index][1];
+    }
+
+    FPS_FFTW_EXECUTE (forward ? m_plan_forward : m_plan_backward);
+
+    for (size_t index = 0; index < m_size; ++index)
+    {
+      out[index][0] = m_out[index][0];
+      out[index][1] = m_out[index][1];
+    }
+  }
+
+  void ifft (FPS_FFTW_COMPLEX *in, FPS_FFTW_COMPLEX *out)
+  {
+    fft (in, out, false);
+  }
+};
 
 struct eq_match
 {
