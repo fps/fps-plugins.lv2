@@ -468,6 +468,5 @@ protected:
 #undef EQ_MATCH_FFTW_FREE
 #undef EQ_MATCH_FFTW_DESTROY_PLAN
 #undef EQ_MATCH_FFTW_EXECUTE
-#undef EQ_MATCH_FLOAT
 
 #endif
