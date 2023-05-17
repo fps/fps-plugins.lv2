@@ -11,10 +11,12 @@ int main (int argc, char *argv[])
 {
   if (argc < 7)
   {
-    throw std::runtime_error ("Usage: test_eq_match FFT_SIZE inputfile1 inputfile2 linear_phase_response_output_file minimum_phase_response_output_file matched_output_file");
+    throw std::runtime_error ("Usage: test_eq_match FFT_SIZE input_file1 input_file2 linear_phase_response_output_file minimum_phase_response_output_file matched_output_file");
   }
 
   const int FFT_SIZE = atoi (argv[1]);
+
+  std::cerr << "Reading input1 files...\n";
 
   SF_INFO input1_info;
   input1_info.format = 0;
@@ -43,8 +45,6 @@ int main (int argc, char *argv[])
 
   sf_seek (input1_file, 0, SEEK_SET);
   sf_seek (input2_file, 0, SEEK_SET);
-
-  std::cerr << "Reading input1 files...\n";
 
   sf_count_t input1_read = sf_read_float (input1_file, &input1[0], input1_count);
   sf_count_t input2_read = sf_read_float (input2_file, &input2[0], input2_count);
