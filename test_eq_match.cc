@@ -3,68 +3,136 @@
 #include <sndfile.h>
 #include <stdexcept>
 #include <iostream>
+#include <FFTConvolver/FFTConvolver.h>
 
 #include "eq_match.h"
 
-#define FFT_SIZE 1024
-
-int main () 
+int main (int argc, char *argv[])
 {
+  if (argc < 7)
   {
-    SF_INFO input_info;
-    input_info.format = 0;
-
-    SF_INFO output_info;
-    output_info.format = 0;
-
-    SNDFILE *input_file = sf_open ("input.wav", SFM_READ, &input_info);
-    SNDFILE *output_file = sf_open ("output.wav", SFM_READ, &output_info);
-
-    if (0 == input_file || 0 == output_file) throw std::runtime_error ("Failed to open one or the other file");
-
-    sf_count_t input_count = sf_seek (input_file, 0, SEEK_END);
-    sf_count_t output_count = sf_seek (output_file, 0, SEEK_END);
-
-    std::cout << input_count << " " << output_count << "\n";
-
-    std::vector<float> input (input_count);
-    std::vector<float> output (output_count);
-
-    sf_seek (input_file, 0, SEEK_SET);
-    sf_seek (output_file, 0, SEEK_SET);
-
-    sf_count_t input_read = sf_read_float (input_file, &input[0], input_count);
-    sf_count_t output_read = sf_read_float (output_file, &output[0], output_count);
-
-    std::cout << input_read << " " << output_read << "\n";
-
-
-    eq_match match (FFT_SIZE, input_info.samplerate);
-    match.reset_buffer1 ();
-    match.reset_buffer2 ();
-
-    for (size_t index = 0; index < (input_count - FFT_SIZE); index += (FFT_SIZE/2))
-    {
-      match.add_frames_to_buffer1 (&input[index], FFT_SIZE);
-      match.add_frames_to_buffer2 (&output[index], FFT_SIZE);
-    }
-
-    match.calculate_response ();
-
-    std::cout << "linear phase response: ";
-    for (size_t index = 0; index < FFT_SIZE; ++index)
-    {
-      std::cout << match.m_linear_phase_response[index] << " ";
-    }
-    std::cout << "\n";
-
-    std::cout << "minimum phase response: ";
-    for (size_t index = 0; index < FFT_SIZE; ++index)
-    {
-      std::cout << match.m_minimum_phase_response[index] << " ";
-    }
-    std::cout << "\n";
+    throw std::runtime_error ("Usage: test_eq_match FFT_SIZE inputfile1 inputfile2 linear_phase_response_output_file minimum_phase_response_output_file matched_output_file");
   }
-  // fftwf_cleanup ();
+
+  const int FFT_SIZE = atoi (argv[1]);
+
+  SF_INFO input1_info;
+  input1_info.format = 0;
+
+  SF_INFO input2_info;
+  input2_info.format = 0;
+
+  SNDFILE *input1_file = sf_open (argv[2], SFM_READ, &input1_info);
+  SNDFILE *input2_file = sf_open (argv[3], SFM_READ, &input2_info);
+
+  if (0 == input1_file) throw std::runtime_error ("Failed to open inputfile1");
+
+  if (0 == input2_file) throw std::runtime_error ("Failed to open inputfile2");
+
+  if (input1_info.samplerate != input2_info.samplerate) throw std::runtime_error ("inputfile1 and inputfile2 have different samplerates");
+
+  if (1 != input1_info.channels || 1 != input2_info.channels) throw std::runtime_error ("Channels != 1");
+
+  sf_count_t input1_count = sf_seek (input1_file, 0, SEEK_END);
+  sf_count_t input2_count = sf_seek (input2_file, 0, SEEK_END);
+
+  // std::cout << input1_count << " " << input2_count << "\n";
+
+  std::vector<float> input1 (input1_count);
+  std::vector<float> input2 (input2_count);
+
+  sf_seek (input1_file, 0, SEEK_SET);
+  sf_seek (input2_file, 0, SEEK_SET);
+
+  std::cerr << "Reading input1 files...\n";
+
+  sf_count_t input1_read = sf_read_float (input1_file, &input1[0], input1_count);
+  sf_count_t input2_read = sf_read_float (input2_file, &input2[0], input2_count);
+
+  sf_close (input1_file);
+  sf_close (input2_file);
+
+  std::cerr << "Calculating spectra...\n";
+
+  eq_match match (FFT_SIZE, input1_info.samplerate);
+  match.reset_buffer1 ();
+  match.reset_buffer2 ();
+
+  for (size_t index = 0; index < (input1_count - FFT_SIZE); index += (FFT_SIZE/2))
+  {
+    match.add_frames_to_buffer1 (&input1[index], FFT_SIZE);
+  }
+
+  for (size_t index = 0; index < (input2_count - FFT_SIZE); index += (FFT_SIZE/2))
+  {
+    match.add_frames_to_buffer2 (&input2[index], FFT_SIZE);
+  }
+
+  std::cerr << "Calculating responses...\n";
+  match.calculate_response ();
+
+  std::cout << "linear phase response: ";
+  for (size_t index = 0; index < FFT_SIZE; ++index)
+  {
+    std::cout << match.m_linear_phase_response[index] << " ";
+  }
+  std::cout << "\n";
+
+  std::cout << "minimum phase response: ";
+  for (size_t index = 0; index < FFT_SIZE; ++index)
+  {
+    std::cout << match.m_minimum_phase_response[index] << " ";
+  }
+  std::cout << "\n";
+
+  std::cerr << "Processing files...\n";
+
+  fftconvolver::FFTConvolver minimum_phase_convolver;
+  minimum_phase_convolver.init (64, &match.m_minimum_phase_response[0], FFT_SIZE);
+  std::vector<float> minimum_phase_output (input1_count);
+
+  minimum_phase_convolver.process (&input1[0], &minimum_phase_output[0], input1_count);
+
+  std::cerr << "Writing output files...\n";
+
+  SF_INFO linear_phase_response_info;
+  SF_INFO minimum_phase_response_info;
+  SF_INFO matched_output_info;
+
+  linear_phase_response_info.channels = 1;
+  minimum_phase_response_info.channels = 1;
+  matched_output_info.channels = 1;
+
+  linear_phase_response_info.samplerate = input1_info.samplerate;
+  minimum_phase_response_info.samplerate = input1_info.samplerate;
+  matched_output_info.samplerate = input1_info.samplerate;
+
+  linear_phase_response_info.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT;
+  minimum_phase_response_info.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT;
+  matched_output_info.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT;
+
+  SNDFILE *linear_phase_output_file = sf_open (argv[4], SFM_WRITE, &linear_phase_response_info);
+
+  SNDFILE *minimum_phase_output_file = sf_open (argv[5], SFM_WRITE, &minimum_phase_response_info);
+
+  SNDFILE *matched_output_file = sf_open (argv[6], SFM_WRITE, &matched_output_info);
+
+  if (0 == linear_phase_output_file) throw std::runtime_error ("Failed to open linear_phase_response output file: " + std::string (argv[4]));
+
+  if (0 == minimum_phase_output_file) throw std::runtime_error ("Failed to open minimum_phase_response output file");
+
+  if (0 == matched_output_file) throw std::runtime_error ("Failed to open matched output file");
+
+  sf_write_float (linear_phase_output_file, &match.m_linear_phase_response[0], FFT_SIZE);
+
+  sf_write_float (minimum_phase_output_file, &match.m_minimum_phase_response[0], FFT_SIZE);
+
+  sf_write_float (matched_output_file, &minimum_phase_output[0], input1_count);
+
+  sf_close (linear_phase_output_file);
+  sf_close (minimum_phase_output_file);
+  sf_close (matched_output_file);
+
+  std::cerr << "Done.\n";
 }
 
