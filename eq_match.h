@@ -303,6 +303,15 @@ struct eq_match
     reset_buffer (1);
   }
 
+  void reset ()
+  {
+    reset_buffer1 ();
+    reset_buffer2 ();
+
+    std::fill (m_linear_phase_response, m_linear_phase_response + m_fft_size, 0);
+    std::fill (m_minimum_phase_response, m_minimum_phase_response + m_fft_size, 0);
+  }
+
   void calculate_response ()
   {
     DBG_COMPLEX_VECTOR("spectrum1:", m_spectrum1, m_fft_size)

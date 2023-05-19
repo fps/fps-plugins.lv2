@@ -1,8 +1,5 @@
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
 #include <vector>
-
 #include <lv2.h>
 
 #include "common.h"
@@ -18,7 +15,8 @@ struct plugin_state
     int m_buffer_head;
 
     plugin_state (float sample_rate) :
-        m_sample_rate (sample_rate)
+        m_sample_rate (sample_rate),
+        m_buffer (2 * sample_rate, 0)
     {
         reset ();
     }
@@ -27,10 +25,11 @@ struct plugin_state
     {
         m_abs1 = 0;
         m_abs2 = 0;
-        m_buffer = std::vector<float> (2 * m_sample_rate, 0);
+        std::fill (m_buffer.begin (), m_buffer.end (), 0);
         m_buffer_head = 0;
     }
 };
+
 struct plugin
 {
     std::vector<float *> m_ports;
@@ -81,20 +80,20 @@ static void run
     uint32_t sample_count
 ) 
 {
-    plugin &p = *((plugin*)instance);
-    plugin_state &state = p.m_plugin_state;
+    plugin &the_plugin = *((plugin*)instance);
+    plugin_state &state = the_plugin.m_plugin_state;
 
     // Audio ports
-    const float *in = p.m_ports[0];
-    float *out = p.m_ports[1];
+    const float *in       =  the_plugin.m_ports[0];
+    float       *out      =  the_plugin.m_ports[1];
 
-    // Control ports
-    const float &t1 = *p.m_ports[2];
-    const float &t2 = *p.m_ports[3];
-    const float &strength = *p.m_ports[4];
-    const float &delay = *p.m_ports[5];
-    const float &maxratio = *p.m_ports[6];
-    const float &minratio = *p.m_ports[7];
+    // Control eports
+    const float &t1       = *the_plugin.m_ports[2];
+    const float &t2       = *the_plugin.m_ports[3];
+    const float &strength = *the_plugin.m_ports[4];
+    const float &delay    = *the_plugin.m_ports[5];
+    const float &maxratio = *the_plugin.m_ports[6];
+    const float &minratio = *the_plugin.m_ports[7];
 
     const float a1 = 1.0f - expf((-1.0f/state.m_sample_rate) / (t1 / 1000.0f));
     const float a2 = 1.0f - expf((-1.0f/state.m_sample_rate) / (t2 / 1000.0f));
@@ -107,16 +106,7 @@ static void run
         const float r = (EPSILON + state.m_abs1) / (EPSILON + state.m_abs2);
         float scale = powf(1.0f / r, strength);
 
-        if (scale > maxratio)
-        {
-            scale = maxratio;
-        }
-
-        if (scale < minratio)
-        {
-            scale = minratio;
-        }
-
+        scale = std::max (std::min (scale, maxratio), minratio);
 
         state.m_buffer[state.m_buffer_head] = in[sample_index];
         
@@ -128,7 +118,7 @@ static void run
         
         out[sample_index] = scale * state.m_buffer[buffer_tail];
         ++state.m_buffer_head;
-        state.m_buffer_head %= 2 * (int)state.m_sample_rate;
+        state.m_buffer_head %= state.m_buffer.size ();
     }
 }
 
