@@ -261,21 +261,21 @@ static const void *extension_data (const char *uri)
 }
 
 static LV2_Descriptor plugin_descriptor = {
-        EQ_MATCH_URI,
-        instantiate,
-        connect_port,
-        activate,
-        run,
-        0,
-        cleanup,
-        extension_data
+    EQ_MATCH_URI,
+    instantiate,
+    connect_port,
+    activate,
+    run,
+    0,
+    cleanup,
+    extension_data
 };
 
 LV2_SYMBOL_EXPORT const LV2_Descriptor* lv2_descriptor (uint32_t index) {
-        if (0 == index) {
-                    return &plugin_descriptor;
-        } else {
-                    return NULL;
-        }
+    if (0 == index) {
+          return &plugin_descriptor;
+    } else {
+        return NULL;
+    }
 }
 
