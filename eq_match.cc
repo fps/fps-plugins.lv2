@@ -1,14 +1,15 @@
 #include <lv2/state/state.h>
 
-#include "generated/ttl2c_eq_match.h"
-
 #include <FFTConvolver/FFTConvolver.h>
 
 #define EQ_MATCH_FLOAT float
 #include "eq_match.h"
 
-#define FFT_SIZE 2048
+#include "common.h"
+#define EQ_MATCH_URI FPS_PLUGINS_BASE_URI "/eq_match"
+#define EQ_MATCH_STATE_URI EQ_MATCH_URI "#state"
 
+#define FFT_SIZE 2048
 #define BLOCK_SIZE 32
 
 typedef struct plugin_state
@@ -35,7 +36,7 @@ typedef struct plugin_state
 }
 plugin_state_t;
 
-static plugin_t* instantiate
+LV2_Handle* instantiate
 (
   plugin_t *instance, double sample_rate,
   const char *bundle_path,
@@ -216,12 +217,22 @@ static const void *extension_data (const char *uri)
   return 0;
 }
 
-static const plugin_callbacks_t plugin_callbacks = {
-    .instantiate = instantiate,
-    .run = run,
-    .cleanup = cleanup,
-    .extension_data = extension_data,
+static LV2_Descriptor plugin_descriptor = {
+    EQ_MATCH_URI,
+    instantiate,
+    connect_port,
+    activate,
+    run,
+    deactivate,
+    cleanup,
+    extension_data
 };
 
-#include "generated/ttl2c_eq_match.c"
+LV2_SYMBOL_EXPORT const LV2_Descriptor* lv2_descriptor (uint32_t index) {
+    if (0 == index) {
+          return &plugin_descriptor;
+    } else {
+          return NULL;
+    }
+}
 

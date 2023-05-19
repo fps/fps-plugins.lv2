@@ -6,7 +6,7 @@
 @prefix work:  <http://lv2plug.in/ns/ext/worker#> .
 @prefix urid:  <http://lv2plug.in/ns/ext/urid#> .
 
-<http://dfdx.eu/plugins/eq_match> a lv2:Plugin ;
+<https://dfdx.eu/fps-plugins.lv2/eq_match> a lv2:Plugin ;
   doap:name "EQ match";
   doap:license <http://usefulinc.com/doap/licenses/gpl> ;
   doap:description "EQ matching of two signals" ;

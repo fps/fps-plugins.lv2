@@ -1,91 +1,153 @@
-#include "generated/ttl2c_relative_dynamics.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <vector>
 
-typedef struct plugin_state 
-{
-    float abs1;
-    float abs2;
-    float samplerate;
-    std::vector<float> buffer;
-    int buffer_head;
-} 
-plugin_state_t;
+#include <lv2.h>
 
-static plugin_t* instantiate(plugin_t *instance, double sample_rate, const char *bundle_path, const LV2_Feature *const *features) 
-{
-    instance->state = new plugin_state;
-    instance->state->samplerate = sample_rate;
-    instance->state->abs1 = 0;
-    instance->state->abs2 = 0;
-    instance->state->buffer = std::vector<float>(2*sample_rate, 0);
-    instance->state->buffer_head = 0; 
+#include "common.h"
 
-    return instance;
+#define RELATIVE_DYNAMICS_URI FPS_PLUGINS_BASE_URI "/relative_dynamics"
+
+struct plugin_state
+{
+    float m_sample_rate;
+    float m_abs1;
+    float m_abs2;
+    std::vector<float> m_buffer;
+    int m_buffer_head;
+
+    plugin_state (float sample_rate) :
+        m_sample_rate (sample_rate)
+    {
+        reset ();
+    }
+
+    void reset ()
+    {
+        m_abs1 = 0;
+        m_abs2 = 0;
+        m_buffer = std::vector<float> (2 * m_sample_rate, 0);
+        m_buffer_head = 0;
+    }
+};
+struct plugin
+{
+    std::vector<float *> m_ports;
+
+    plugin_state m_plugin_state;
+
+    plugin (float sample_rate) :
+        m_ports (8, 0),
+        m_plugin_state (sample_rate)
+    {
+
+    }
+};
+
+static void connect_port (LV2_Handle instance, uint32_t port, void *data_location)
+{
+    plugin &p = *((plugin*)instance);
+    p.m_ports[port] = (float*)data_location;
 }
 
-static void cleanup(plugin_t *instance) 
+LV2_Handle instantiate
+(
+    const struct LV2_Descriptor *descriptor,
+    double sample_rate,
+    const char *bundle_path,
+    const LV2_Feature *const *features
+)
 {
-    delete instance->state;
+    plugin *instance = new plugin (sample_rate);
+    return (LV2_Handle)instance;
+}
+
+static void activate (LV2_Handle instance)
+{
+    ((plugin*)instance)->m_plugin_state.reset ();
+}
+
+static void cleanup(LV2_Handle instance)
+{
+    delete (plugin*)instance;
 }
 
 #define EPSILON 0.0001f
 
 static void run
 (
-    plugin_t *instance, uint32_t nframes, 
-    const plugin_port_in_t in, const plugin_port_out_t out, 
-    const plugin_port_t1_t t1, const plugin_port_t2_t t2, 
-    const plugin_port_strength_t strength, const plugin_port_delay_t delay, 
-    const plugin_port_maxratio_t maxratio, const plugin_port_minratio_t minratio
+    LV2_Handle instance,
+    uint32_t sample_count
 ) 
 {
-    plugin_state_t *tinstance = instance->state;
+    plugin &p = *((plugin*)instance);
+    plugin_state &state = p.m_plugin_state;
 
-    const float a1 = 1.0f - expf((-1.0f/tinstance->samplerate) / (t1.data / 1000.0f));
-    const float a2 = 1.0f - expf((-1.0f/tinstance->samplerate) / (t2.data / 1000.0f));
+    // Audio ports
+    const float *in = p.m_ports[0];
+    float *out = p.m_ports[1];
 
-    for(uint32_t sample_index = 0; sample_index < nframes; ++sample_index) 
+    // Control ports
+    const float &t1 = *p.m_ports[2];
+    const float &t2 = *p.m_ports[3];
+    const float &strength = *p.m_ports[4];
+    const float &delay = *p.m_ports[5];
+    const float &maxratio = *p.m_ports[6];
+    const float &minratio = *p.m_ports[7];
+
+    const float a1 = 1.0f - expf((-1.0f/state.m_sample_rate) / (t1 / 1000.0f));
+    const float a2 = 1.0f - expf((-1.0f/state.m_sample_rate) / (t2 / 1000.0f));
+
+    for(uint32_t sample_index = 0; sample_index < sample_count; ++sample_index)
     {
-        tinstance->abs1 = a1 * fabs(in.data[sample_index]) + (1.0f - a1) * tinstance->abs1;
-        tinstance->abs2 = a2 * fabs(in.data[sample_index]) + (1.0f - a2) * tinstance->abs2;
+        state.m_abs1 = a1 * fabs(in[sample_index]) + (1.0f - a1) * state.m_abs1;
+        state.m_abs2 = a2 * fabs(in[sample_index]) + (1.0f - a2) * state.m_abs2;
 
-        const float r = (EPSILON + tinstance->abs1) / (EPSILON + tinstance->abs2);
-        float scale = powf(1.0f / r, strength.data);
+        const float r = (EPSILON + state.m_abs1) / (EPSILON + state.m_abs2);
+        float scale = powf(1.0f / r, strength);
 
-        if (scale > maxratio.data) 
+        if (scale > maxratio)
         {
-            scale = maxratio.data;
+            scale = maxratio;
         }
 
-        if (scale < minratio.data) 
+        if (scale < minratio)
         {
-            scale = minratio.data;
+            scale = minratio;
         }
 
 
-        tinstance->buffer[tinstance->buffer_head] = in.data[sample_index];
+        state.m_buffer[state.m_buffer_head] = in[sample_index];
         
-        int buffer_tail = tinstance->buffer_head - tinstance->samplerate * (delay.data / 1000);
+        int buffer_tail = state.m_buffer_head - state.m_sample_rate * (delay / 1000);
         if (buffer_tail < 0) 
         {
-            buffer_tail += 2 * tinstance->samplerate;
+            buffer_tail += 2 * state.m_sample_rate;
         }
         
-        out.data[sample_index] = scale * tinstance->buffer[buffer_tail];
-        ++tinstance->buffer_head;
-        tinstance->buffer_head %= 2 * (int)tinstance->samplerate;
+        out[sample_index] = scale * state.m_buffer[buffer_tail];
+        ++state.m_buffer_head;
+        state.m_buffer_head %= 2 * (int)state.m_sample_rate;
     }
 }
 
-static const plugin_callbacks_t plugin_callbacks = 
-{
-    .instantiate = instantiate,
-    .run = run,
-    .cleanup = cleanup,
+static LV2_Descriptor plugin_descriptor = {
+    RELATIVE_DYNAMICS_URI,
+    instantiate,
+    connect_port,
+    activate,
+    run,
+    0,
+    cleanup,
+    0
 };
 
-#include "generated/ttl2c_relative_dynamics.c"
+LV2_SYMBOL_EXPORT const LV2_Descriptor* lv2_descriptor (uint32_t index) {
+    if (0 == index) {
+          return &plugin_descriptor;
+    } else {
+          return NULL;
+    }
+}
 

@@ -11,9 +11,6 @@ all: plugins test_eq_match
 
 plugins: lv2/fps-plugins.lv2/dynamics.so lv2/fps-plugins.lv2/eq_match.so
 
-generate:
-	lv2-ttl2c -b lv2/fps-plugins.lv2 -o generated 
-
 lv2/fps-plugins.lv2/dynamics.so: dynamics.cc makefile
 	g++ -std=c++20 ${CXX_EXTRA_FLAGS} dynamics.cc -pedantic -Wall -Werror -shared -o lv2/fps-plugins.lv2/dynamics.so
 
@@ -24,7 +21,6 @@ test_eq_match: test_eq_match.cc eq_match.h makefile
 	g++ -std=c++20 ${CXX_EXTRA_FLAGS} test_eq_match.cc ${FFTCONVOLVER_SOURCES} -o test_eq_match -lfftw3f -lm -lsndfile
 
 test: all
-	LV2_PATH=${PWD}/lv2 lv2ls
 	LV2_PATH=${PWD}/lv2 lv2info http://dfdx.eu/plugins/relative_dynamics
 	LV2_PATH=${PWD}/lv2 valgrind ${VALGRIND_FLAGS} lv2bench http://dfdx.eu/plugins/relative_dynamics
 	LV2_PATH=${PWD}/lv2 lv2info http://dfdx.eu/plugins/eq_match
