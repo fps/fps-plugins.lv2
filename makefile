@@ -21,9 +21,9 @@ test_eq_match: test_eq_match.cc eq_match.h makefile
 	g++ -std=c++20 ${CXX_EXTRA_FLAGS} test_eq_match.cc ${FFTCONVOLVER_SOURCES} -o test_eq_match -lfftw3f -lm -lsndfile
 
 test: all
-	LV2_PATH=${PWD}/lv2 lv2info http://dfdx.eu/plugins/relative_dynamics
-	LV2_PATH=${PWD}/lv2 valgrind ${VALGRIND_FLAGS} lv2bench http://dfdx.eu/plugins/relative_dynamics
-	LV2_PATH=${PWD}/lv2 lv2info http://dfdx.eu/plugins/eq_match
-	LV2_PATH=${PWD}/lv2 valgrind ${VALGRIND_FLAGS} lv2bench http://dfdx.eu/plugins/eq_match
+	LV2_PATH=${PWD}/lv2 lv2info https://dfdx.eu/fps-plugins.lv2/relative_dynamics
+	LV2_PATH=${PWD}/lv2 valgrind ${VALGRIND_FLAGS} lv2bench https://dfdx.eu/fps-plugins.lv2/relative_dynamics
+	LV2_PATH=${PWD}/lv2 lv2info https://dfdx.eu/fps-plugins.lv2/eq_match
+	LV2_PATH=${PWD}/lv2 valgrind ${VALGRIND_FLAGS} lv2bench https://dfdx.eu/fps-plugins.lv2/eq_match
 	LV2_PATH=${PWD}/lv2 valgrind ${VALGRIND_FLAGS} ./test_eq_match 2048 input.wav output.wav linear_phase_response.wav minimum_phase_response.wav matched.wav
 

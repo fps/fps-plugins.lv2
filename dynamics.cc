@@ -25,7 +25,7 @@ struct plugin_state
     {
         m_abs1 = 0;
         m_abs2 = 0;
-        std::fill (m_buffer.begin (), m_buffer.end (), 0);
+        std::fill (m_buffer.begin (), m_buffer.end (), 0.f);
         m_buffer_head = 0;
     }
 };
