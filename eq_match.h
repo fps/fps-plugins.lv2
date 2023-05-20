@@ -245,11 +245,11 @@ struct eq_match
         m_ifft_plan = EQ_MATCH_FFTW_PLAN_DFT(fft_size, m_fft_buffer3, m_fft_buffer4, FFTW_BACKWARD, FFTW_ESTIMATE);
 
         m_linear_phase_response = (EQ_MATCH_FLOAT*)malloc (sizeof(EQ_MATCH_FLOAT) * fft_size);
-        memset(m_linear_phase_response, 0, sizeof(EQ_MATCH_FLOAT) * fft_size);
-
+        
         m_minimum_phase_response = (EQ_MATCH_FLOAT*)malloc (sizeof(EQ_MATCH_FLOAT) * fft_size);
-        memset(m_minimum_phase_response, 0, sizeof(EQ_MATCH_FLOAT) * fft_size);
-}
+        
+        reset ();
+    }
 
     ~eq_match ()
     {
@@ -394,6 +394,7 @@ struct eq_match
         for (size_t index = 0; index < m_fft_size; ++index) m_minimum_phase_response[index] = m_fft_buffer4[index][0];
 
         DBG_REAL_VECTOR("linear phase response:", m_linear_phase_response, m_fft_size)
+        
         DBG_REAL_VECTOR("minimum phase response:", m_minimum_phase_response, m_fft_size)
     }
 
