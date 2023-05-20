@@ -56,17 +56,8 @@ int main (int argc, char *argv[])
 
     eq_match match (FFT_SIZE, input1_info.samplerate);
 
-    for (size_t index = 0; index < (input1_count - FFT_SIZE); index += (FFT_SIZE/2))
-    {
-        // std::cerr << "Adding to spectrum 1: index: " << index << "\n";
-        match.add_frames_to_buffer1 (&input1[index], FFT_SIZE);
-    }
-
-    for (size_t index = 0; index < (input2_count - FFT_SIZE); index += (FFT_SIZE/2))
-    {
-        // std::cerr << "Adding to spectrum 2: index: " << index << "\n";
-        match.add_frames_to_buffer2 (&input2[index], FFT_SIZE);
-    }
+    match.add_frames_to_buffer1 (&input1[0], input1_count);
+    match.add_frames_to_buffer2 (&input2[0], input1_count);
 
     std::cerr << "Calculating responses...\n";
     match.calculate_response ();
