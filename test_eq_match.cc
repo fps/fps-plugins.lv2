@@ -62,6 +62,7 @@ int main (int argc, char *argv[])
     std::cerr << "Calculating responses...\n";
     match.calculate_response ();
 
+#ifdef DEBUG    
     std::cout << "linear phase response: ";
     for (size_t index = 0; index < FFT_SIZE; ++index)
     {
@@ -75,7 +76,8 @@ int main (int argc, char *argv[])
         std::cout << match.m_minimum_phase_response[index] << " ";
     }
     std::cout << "\n";
-
+#endif
+    
     std::cerr << "Processing files...\n";
 
     fftconvolver::FFTConvolver minimum_phase_convolver;

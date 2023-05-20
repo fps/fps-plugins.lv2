@@ -51,13 +51,7 @@
     #error "Unexpected value of EQ_MATCH_FLOAT"
 #endif
 
-#ifdef NDEBUG
-    #define DBG(x) {}
-
-    #define DBG_REAL_VECTOR(prefix, x, len) {}
-
-    #define DBG_COMPLEX_VECTOR(prefix, x, len) {}
-#else
+#ifdef DEBUG
     #define DBG(x) \
     {\
         std::cerr << x;\
@@ -88,6 +82,12 @@
             } \
             std::cerr << "\n";\
         }
+#else
+    #define DBG(x) {}
+
+    #define DBG_REAL_VECTOR(prefix, x, len) {}
+
+    #define DBG_COMPLEX_VECTOR(prefix, x, len) {}
 #endif
 
 struct dft

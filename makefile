@@ -1,5 +1,10 @@
 .PHONY: all
 
+CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g3 -I./vendored
+ifdef DEBUG
+CXX_EXTRA_FLAGS += -g3 -DDEBUG
+endif
+	
 # CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g -I .
 # CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g3 -I .
 CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g3 -DNDEBUG -I./vendored
