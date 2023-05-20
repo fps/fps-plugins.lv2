@@ -2,8 +2,8 @@
 
 # CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g -I .
 # CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g3 -I .
-# CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g3 -DNDEBUG -I./vendored
-CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g3  -I./vendored
+CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g3 -DNDEBUG -I./vendored
+# CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -g3  -I./vendored
 VALGRIND_FLAGS ?= --suppressions=valgrind-suppressions.txt  --leak-check=full --show-leak-kinds=all
 
 FFTCONVOLVER_SOURCES = vendored/FFTConvolver/AudioFFT.cpp vendored/FFTConvolver/Utilities.cpp vendored/FFTConvolver/FFTConvolver.cpp
