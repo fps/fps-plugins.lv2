@@ -65,7 +65,7 @@
 
     #define DBG_REAL_VECTOR(prefix, x, len) \
     { \
-        std::cerr << prefix << " "; \
+        std::cerr << "############ " << prefix << "\n"; \
         for (size_t index = 0; index < len; ++index) \
         { \
             std::cerr << x[index] << " "; \
@@ -75,13 +75,13 @@
 
     #define DBG_COMPLEX_VECTOR(prefix, x, len) \
         { \
-            std::cerr << prefix << " real: "; \
+            std::cerr << "############ " << prefix << " real:\n"; \
             for (size_t index = 0; index < len; ++index) \
             { \
                 std::cerr << x[index][0] << " ";\
             } \
             std::cerr << "\n"; \
-            std::cerr << prefix << " imag: "; \
+            std::cerr << "############ " << prefix << " imag:\n"; \
             for (size_t index = 0; index < len; ++index) \
             { \
                 std::cerr << x[index][1] << " "; \
