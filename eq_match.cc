@@ -36,10 +36,10 @@ struct plugin_state
       m_match.reset ();
 
       m_linear_phase_convolver.init
-          (BLOCK_SIZE, m_match.m_minimum_phase_response, FFT_SIZE);
+          (BLOCK_SIZE, &m_match.m_minimum_phase_response[0], FFT_SIZE);
 
       m_minimum_phase_convolver.init
-          (BLOCK_SIZE, m_match.m_minimum_phase_response, FFT_SIZE);
+          (BLOCK_SIZE, &m_match.m_minimum_phase_response[0], FFT_SIZE);
     }
 };
 
@@ -128,10 +128,10 @@ static void run
         state.m_match.calculate_response ();
 
         state.m_linear_phase_convolver.init
-            (BLOCK_SIZE,    state.m_match.m_linear_phase_response, FFT_SIZE);
+            (BLOCK_SIZE, &state.m_match.m_linear_phase_response[0], FFT_SIZE);
 
         state.m_minimum_phase_convolver.init
-            (BLOCK_SIZE,    state.m_match.m_minimum_phase_response, FFT_SIZE);
+            (BLOCK_SIZE, &state.m_match.m_minimum_phase_response[0], FFT_SIZE);
     }
 
     if (analyze1 > 0)

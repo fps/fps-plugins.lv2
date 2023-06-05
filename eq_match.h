@@ -61,51 +61,70 @@
     #define DBG_COMPLEX_VECTOR(prefix, x, len) {}
 #endif
 
+struct dft_buffer
+{
+    size_t m_size;
+    fftwf_complex *m;
+
+    dft_buffer (size_t size) :
+      m_size (size),
+      m(fftwf_alloc_complex (size))
+    {
+
+    }
+
+    ~dft_buffer ()
+    {
+      fftwf_free (m);
+    }
+
+private:
+    dft_buffer (const dft_buffer &);
+    dft_buffer &operator= (const dft_buffer &);
+};
+
 struct dft
 {
     const size_t m_size;
 
-    fftwf_complex *m_in;
-    fftwf_complex *m_out;
+    dft_buffer m_in;
+    dft_buffer m_out;
     fftwf_plan m_plan_forward;
     fftwf_plan m_plan_backward;
 
     dft (const size_t size) :
-        m_size (size)
+        m_size (size),
+        m_in (size),
+        m_out (size)
     {
-        m_in = fftwf_alloc_complex (m_size);
-        m_out = fftwf_alloc_complex (m_size);
-
-        m_plan_forward = fftwf_plan_dft_1d(m_size, m_in, m_out, FFTW_FORWARD, FFTW_ESTIMATE);
-        m_plan_backward = fftwf_plan_dft_1d(m_size, m_in, m_out, FFTW_FORWARD, FFTW_ESTIMATE);
+        m_plan_forward = fftwf_plan_dft_1d(m_size, m_in.m, m_out.m, FFTW_FORWARD, FFTW_ESTIMATE);
+        m_plan_backward = fftwf_plan_dft_1d(m_size, m_in.m, m_out.m, FFTW_FORWARD, FFTW_ESTIMATE);
     }
 
     ~dft ()
     {
-        fftwf_free (m_in);
-        fftwf_free (m_out);
         fftwf_destroy_plan (m_plan_forward);
         fftwf_destroy_plan (m_plan_backward);
     }
 
-    void fft (fftwf_complex *in, fftwf_complex *out, bool forward = true)
+    void fft (const dft_buffer &in, dft_buffer &out, bool forward = true)
     {
         for (size_t index = 0; index < m_size; ++index)
         {
-            m_in[index][0] = in[index][0];
-            m_in[index][1] = in[index][1];
+            m_in.m[index][0] = in.m[index][0];
+            m_in.m[index][1] = in.m[index][1];
         }
 
         fftwf_execute (forward ? m_plan_forward : m_plan_backward);
 
         for (size_t index = 0; index < m_size; ++index)
         {
-            out[index][0] = m_out[index][0];
-            out[index][1] = m_out[index][1];
+            out.m[index][0] = m_out.m[index][0];
+            out.m[index][1] = m_out.m[index][1];
         }
     }
 
-    void ifft (fftwf_complex *in, fftwf_complex *out)
+    void ifft (const dft_buffer &in, dft_buffer &out)
     {
         fft (in, out, false);
     }
@@ -115,16 +134,16 @@ struct dft
     {
         for (size_t index = 0; index < m_size; ++index)
         {
-            m_in[index][0] = in[index];
-            m_in[index][1] = 0;
+            m_in.m[index][0] = in[index];
+            m_in.m[index][1] = 0;
         }
 
         fftwf_execute (m_plan_forward);
 
         for (size_t index = 0; index < m_size; ++index)
         {
-            out[index][0] = m_out[index][0];
-            out[index][1] = m_out[index][1];
+            out[index][0] = m_out.m[index][0];
+            out[index][1] = m_out.m[index][1];
         }
     }
 };
@@ -141,19 +160,35 @@ struct eq_match
     std::vector<float> m_window;
 
     // Buffers to accumulate samples
-    fftwf_complex *m_buffer11;
+    dft_buffer m_buffer11;
     int m_buffer_head11;
-    fftwf_complex *m_buffer12;
+    dft_buffer m_buffer12;
     int m_buffer_head12;
 
-    fftwf_complex *m_buffer21;
+    dft_buffer m_buffer21;
     int m_buffer_head21;
-    fftwf_complex *m_buffer22;
+    dft_buffer m_buffer22;
     int m_buffer_head22;
 
-    fftwf_complex *m_spectrum1;
-    fftwf_complex *m_spectrum2;
+    dft_buffer m_spectrum1;
+    dft_buffer m_spectrum2;
 
+    dft_buffer m_spectrum_ratio;
+    dft_buffer m_ifft_spectrum_ratio;
+    dft_buffer m_log;
+    dft_buffer m_ifft_log;
+    dft_buffer m_fold_ifft_log;
+    dft_buffer m_fft_fold_ifft_log;
+    dft_buffer m_exp_fft_fold_ifft_log;
+    dft_buffer m_ifft_exp_fft_fold_ifft_log;
+
+    dft_buffer m_fft_buffer1;
+    size_t m_number_of_ffts1;
+
+    dft_buffer m_fft_buffer2;
+    size_t m_number_of_ffts2;
+
+#if 0
     fftwf_plan m_fft_plan11;
     fftwf_plan m_fft_plan12;
     fftwf_plan m_fft_plan21;
@@ -162,98 +197,51 @@ struct eq_match
     fftwf_plan m_fft_plan;
     fftwf_plan m_ifft_plan;
 
-    fftwf_complex *m_fft_buffer1;
-    size_t m_number_of_ffts1;
-
-    fftwf_complex *m_fft_buffer2;
-    size_t m_number_of_ffts2;
 
     fftwf_complex *m_fft_buffer3;
     fftwf_complex *m_fft_buffer4;
     fftwf_complex *m_fft_buffer5;
+#endif
 
-    float *m_linear_phase_response;
-    float *m_minimum_phase_response;
+    std::vector<float> m_linear_phase_response;
+    std::vector<float> m_minimum_phase_response;
 
     eq_match (size_t fft_size, float sample_rate) :
         m_fft_size (fft_size),
         m_dft1 (fft_size),
         m_dft2 (4 * fft_size),
         m_sample_rate (sample_rate),
-        m_window(fft_size, 0.f)
+        m_window(fft_size, 0.f),
+        m_buffer11 (fft_size),
+        m_buffer12 (fft_size),
+        m_buffer21 (fft_size),
+        m_buffer22 (fft_size),
+        m_spectrum1 (fft_size),
+        m_spectrum2 (fft_size),
+        m_spectrum_ratio (fft_size),
+        m_ifft_spectrum_ratio (fft_size),
+        m_log (fft_size),
+        m_ifft_log (fft_size),
+        m_fold_ifft_log (fft_size),
+        m_fft_fold_ifft_log (fft_size),
+        m_exp_fft_fold_ifft_log (fft_size),
+        m_ifft_exp_fft_fold_ifft_log (fft_size),
+        m_fft_buffer1 (fft_size),
+        m_fft_buffer2 (fft_size),
+        m_linear_phase_response (fft_size),
+        m_minimum_phase_response (fft_size)
     {
-        m_buffer11 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
-        m_buffer12 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
-
-        m_buffer21 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
-        m_buffer22 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
-
-        m_buffer_head11 = 0;
-        m_buffer_head12 = fft_size/2;
-        m_buffer_head21 = 0;
-        m_buffer_head22 = fft_size/2;
-
-        m_spectrum1 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
-        m_spectrum2 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
-
-        m_fft_buffer1 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
-        m_number_of_ffts1 = 0;
-
-        m_fft_buffer2 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
-        m_number_of_ffts2 = 0;
-
-        m_fft_buffer3 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
-        m_fft_buffer4 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
-        m_fft_buffer5 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
-
         // hann window generation
         for (size_t index = 0; index < fft_size; ++index) {
             m_window[index] = pow(sin(M_PI * index / fft_size), 2);
         }
 
-        m_fft_plan11 = fftwf_plan_dft_1d(fft_size, &m_buffer11[0], m_fft_buffer1, FFTW_FORWARD, FFTW_ESTIMATE);
-        m_fft_plan12 = fftwf_plan_dft_1d(fft_size, &m_buffer12[0], m_fft_buffer1, FFTW_FORWARD, FFTW_ESTIMATE);
-
-        m_fft_plan21 = fftwf_plan_dft_1d(fft_size, &m_buffer21[0], m_fft_buffer2, FFTW_FORWARD, FFTW_ESTIMATE);
-        m_fft_plan22 = fftwf_plan_dft_1d(fft_size, &m_buffer22[0], m_fft_buffer2, FFTW_FORWARD, FFTW_ESTIMATE);
-
-        m_fft_plan = fftwf_plan_dft_1d(fft_size, m_fft_buffer3, m_fft_buffer5, FFTW_FORWARD, FFTW_ESTIMATE);
-
-        m_ifft_plan = fftwf_plan_dft_1d(fft_size, m_fft_buffer3, m_fft_buffer4, FFTW_BACKWARD, FFTW_ESTIMATE);
-
-        m_linear_phase_response = (float*)malloc (sizeof(float) * fft_size);
-        
-        m_minimum_phase_response = (float*)malloc (sizeof(float) * fft_size);
-        
         reset ();
     }
 
     ~eq_match ()
     {
-        fftwf_destroy_plan (m_fft_plan11);
-        fftwf_destroy_plan (m_fft_plan12);
-        fftwf_destroy_plan (m_fft_plan21);
-        fftwf_destroy_plan (m_fft_plan22);
 
-        fftwf_destroy_plan (m_fft_plan);
-        fftwf_destroy_plan (m_ifft_plan);
-
-        fftwf_free (m_spectrum1);
-        fftwf_free (m_spectrum2);
-
-        fftwf_free (m_buffer11);
-        fftwf_free (m_buffer12);
-        fftwf_free (m_buffer22);
-        fftwf_free (m_buffer21);
-
-        fftwf_free (m_fft_buffer1);
-        fftwf_free (m_fft_buffer2);
-        fftwf_free (m_fft_buffer3);
-        fftwf_free (m_fft_buffer4);
-        fftwf_free (m_fft_buffer5);
-
-        free (m_linear_phase_response);
-        free (m_minimum_phase_response);
     }
 
     // Buffers up to FFT_SIZE samples and then calculates the spectrum and adds
@@ -285,8 +273,8 @@ struct eq_match
         reset_buffer1 ();
         reset_buffer2 ();
 
-        std::fill (m_linear_phase_response, m_linear_phase_response + m_fft_size, 0);
-        std::fill (m_minimum_phase_response, m_minimum_phase_response + m_fft_size, 0);
+        std::fill (m_linear_phase_response.begin (), m_linear_phase_response.end (), 0);
+        std::fill (m_minimum_phase_response.begin (), m_minimum_phase_response.end (), 0);
     }
 
     void calculate_response ()
@@ -295,98 +283,102 @@ struct eq_match
         DBG_COMPLEX_VECTOR("spectrum2:", m_spectrum2, m_fft_size)
 
         for (size_t index = 0; index < m_fft_size; ++index) {
-            m_fft_buffer3[index][0] = ((m_spectrum2[index][0] / m_number_of_ffts2) / (m_spectrum1[index][0] / m_number_of_ffts1));
-            m_fft_buffer3[index][1] = 0;
+            m_spectrum_ratio.m[index][0] = ((m_spectrum2.m[index][0] / m_number_of_ffts2) / (m_spectrum1.m[index][0] / m_number_of_ffts1));
+            m_spectrum_ratio.m[index][1] = 0;
         }
 
-        DBG_COMPLEX_VECTOR("ratio:", m_fft_buffer3, m_fft_size)
+        DBG_COMPLEX_VECTOR("ratio:", m_spectrum_ratio.m, m_fft_size)
 
-        fftwf_execute(m_ifft_plan);
+        m_dft1.fft (m_spectrum_ratio, m_ifft_spectrum_ratio);
+
         for (size_t index = 0; index < m_fft_size; ++index)
         {
-            m_fft_buffer4[index][0] /= m_fft_size;
+            m_ifft_spectrum_ratio.m[index][0] /= m_fft_size;
         }
 
         // IFFT-shift
         for (size_t index = 0; index < m_fft_size; ++index)
         {
-            m_linear_phase_response[(index + (m_fft_size/2)) % m_fft_size] = m_fft_buffer4[index][0];
+            m_linear_phase_response[(index + (m_fft_size/2)) % m_fft_size] = m_ifft_spectrum_ratio.m[index][0];
         }
 
         // exp(fft(fold(ifft(log(s)))))
+
         for (size_t index = 0; index < m_fft_size; ++index) {
-            m_fft_buffer3[index][0] = log(m_fft_buffer3[index][0]);
+            m_log.m[index][0] = log(m_spectrum_ratio.m[index][0]);
         }
 
-        DBG_COMPLEX_VECTOR("log:", m_fft_buffer3, m_fft_size)
+        DBG_COMPLEX_VECTOR("log:", m_spectrum_ratio.m, m_fft_size)
 
         // 3 -> 4
-        fftwf_execute(m_ifft_plan);
+        m_dft1.ifft (m_log, m_ifft_log);
 
         for (size_t index = 0; index < m_fft_size; ++index)
         {
-            m_fft_buffer4[index][0] /= m_fft_size;
+            m_ifft_log.m[index][0] /= m_fft_size;
         }
 
-        DBG_COMPLEX_VECTOR("ifft:", m_fft_buffer4, m_fft_size)
+        DBG_COMPLEX_VECTOR("ifft:", m_ifft_log, m_fft_size)
 
         // fold
         for (size_t index = 0; index < m_fft_size; ++index) {
             if (index == 0) {
-                m_fft_buffer3[index][0] = m_fft_buffer4[index][0];
-                m_fft_buffer3[index][1] = 0;
+                m_fold_ifft_log.m[index][0] = m_ifft_log.m[index][0];
+                m_fold_ifft_log.m[index][1] = 0;
             }
             if (index > 0 && index < m_fft_size/2) {
-                m_fft_buffer3[index][0] = m_fft_buffer4[index][0];
-                m_fft_buffer3[index][1] = 0;
-                m_fft_buffer3[index][0] += m_fft_buffer4[m_fft_size - index][0];
+                m_fold_ifft_log.m[index][0] = m_ifft_log.m[index][0];
+                m_fold_ifft_log.m[index][1] = 0;
+                m_fold_ifft_log.m[index][0] += m_ifft_log.m[m_fft_size - index][0];
             }
             if (index == m_fft_size/2) {
-                m_fft_buffer3[index][0] = m_fft_buffer4[index][0];
+                m_fold_ifft_log.m[index][0] = m_ifft_log.m[index][0];
             }
             if (index > m_fft_size/2) {
-                m_fft_buffer3[index][0] = 0;
-                m_fft_buffer3[index][1] = 0;
+                m_fold_ifft_log.m[index][0] = 0;
+                m_fold_ifft_log.m[index][1] = 0;
             }
         }
 
-        DBG_COMPLEX_VECTOR("fold:", m_fft_buffer3, m_fft_size)
+        DBG_COMPLEX_VECTOR("fold:", m_fold_ifft_log.m, m_fft_size)
 
         // 3 -> 5
-        fftwf_execute (m_fft_plan);
+        m_dft1.fft (m_fold_ifft_log, m_fft_fold_ifft_log);
 
         for (size_t index = 0; index < m_fft_size; ++index) {
-            std::complex<float> c(m_fft_buffer5[index][0], m_fft_buffer5[index][1]);
+            std::complex<float> c(m_fft_fold_ifft_log.m[index][0], m_fft_fold_ifft_log.m[index][1]);
             std::complex<float> c2 = std::exp(c);
-            m_fft_buffer3[index][0] = std::real(c2);
-            m_fft_buffer3[index][1] = std::imag(c2);
+            m_exp_fft_fold_ifft_log.m[index][0] = std::real(c2);
+            m_exp_fft_fold_ifft_log.m[index][1] = std::imag(c2);
         }
 
-        DBG_COMPLEX_VECTOR("exp:", m_fft_buffer3, m_fft_size)
+        DBG_COMPLEX_VECTOR("exp:", m_exp_fft_fold_ifft_log.m, m_fft_size)
 
         // 3 -> 4
-        fftwf_execute (m_ifft_plan);
-        for (size_t index = 0; index < m_fft_size; ++index) m_fft_buffer4[index][0] /= m_fft_size;
+        m_dft1.ifft (m_exp_fft_fold_ifft_log, m_ifft_exp_fft_fold_ifft_log);
 
-        for (size_t index = 0; index < m_fft_size; ++index) m_minimum_phase_response[index] = m_fft_buffer4[index][0];
+        for (size_t index = 0; index < m_fft_size; ++index)
+        {
+            m_ifft_exp_fft_fold_ifft_log.m[index][0] /= m_fft_size;
+        }
 
-        DBG_REAL_VECTOR("linear phase response:", m_linear_phase_response, m_fft_size)
+        for (size_t index = 0; index < m_fft_size; ++index)
+        {
+            m_minimum_phase_response[index] = m_ifft_exp_fft_fold_ifft_log.m[index][0];
+        }
+
+        DBG_REAL_VECTOR("linear phase response:", &m_linear_phase_response[0], m_fft_size)
         
-        DBG_REAL_VECTOR("minimum phase response:", m_minimum_phase_response, m_fft_size)
+        DBG_REAL_VECTOR("minimum phase response:", &m_minimum_phase_response[0], m_fft_size)
     }
 
 protected:
     void add_frames_to_buffer (size_t buffer_index, const float *buffer, size_t number_of_samples)
     {
-        fftwf_complex *buffer1 = (0 == buffer_index) ? m_buffer11 : m_buffer21;
-        fftwf_complex *buffer2 = (0 == buffer_index) ? m_buffer12 : m_buffer22;
+        dft_buffer &buffer1 = (0 == buffer_index) ? m_buffer11 : m_buffer21;
+        dft_buffer &buffer2 = (0 == buffer_index) ? m_buffer12 : m_buffer22;
 
-        fftwf_plan fft_plan1 = (0 == buffer_index) ? m_fft_plan11 : m_fft_plan21;
-        fftwf_plan fft_plan2 = (0 == buffer_index) ? m_fft_plan12 : m_fft_plan22;
-
-        fftwf_complex *fft_buffer = (0 == buffer_index) ? m_fft_buffer1 : m_fft_buffer2;
-
-        fftwf_complex *spectrum = (0 == buffer_index) ? m_spectrum1 : m_spectrum2;
+        dft_buffer &spectrum = (0 == buffer_index) ? m_spectrum1 : m_spectrum2;
 
         size_t &number_of_ffts = (0 == buffer_index) ? m_number_of_ffts1 : m_number_of_ffts2;
 
@@ -395,18 +387,18 @@ protected:
 
         for (size_t sample_index = 0; sample_index < number_of_samples; ++sample_index)
         {
-            buffer1[buffer_head1][0] = buffer[sample_index] * m_window[buffer_head1];
-            buffer2[buffer_head2][0] = buffer[sample_index] * m_window[buffer_head2];
+            buffer1.m[buffer_head1][0] = buffer[sample_index] * m_window[buffer_head1];
+            buffer2.m[buffer_head2][0] = buffer[sample_index] * m_window[buffer_head2];
 
             ++buffer_head1;
             ++buffer_head2;
 
             if (buffer_head1 >= (int)m_fft_size) {
                     // DBG("execute " << buffer_index << "-1\n")
-                    fftwf_execute (fft_plan1);
+                    m_dft1.fft (buffer1, spectrum);
                     for (size_t index = 0; index < m_fft_size; ++index) {
-                            spectrum[index][0] += sqrt(pow(fft_buffer[index][0], 2) + pow(fft_buffer[index][1], 2));
-                            spectrum[index][1] = 0;
+                            spectrum.m[index][0] += sqrt(pow(spectrum.m[index][0], 2) + pow(spectrum.m[index][1], 2));
+                            spectrum.m[index][1] = 0;
                     }
                     ++number_of_ffts;
                     buffer_head1 = 0;
@@ -414,10 +406,10 @@ protected:
 
             if (buffer_head2 >= (int)m_fft_size) {
                     // DBG("execute " << buffer_index << "-2\n")
-                    fftwf_execute (fft_plan2);
+                    m_dft1.fft (buffer2, spectrum);
                     for (size_t index = 0; index < m_fft_size; ++index) {
-                            spectrum[index][0] += sqrt(pow(fft_buffer[index][0], 2) + pow(fft_buffer[index][1], 2));
-                            spectrum[index][1] = 0;
+                            spectrum.m[index][0] += sqrt(pow(spectrum.m[index][0], 2) + pow(spectrum.m[index][1], 2));
+                            spectrum.m[index][1] = 0;
                     }
                     ++number_of_ffts;
                     buffer_head2 = 0;
@@ -427,19 +419,19 @@ protected:
 
     void reset_buffer (size_t buffer_index)
     {
-        fftwf_complex *buffer1 = (0 == buffer_index) ? m_buffer11 : m_buffer21;
-        fftwf_complex *buffer2 = (0 == buffer_index) ? m_buffer12 : m_buffer22;
+        dft_buffer &buffer1 = (0 == buffer_index) ? m_buffer11 : m_buffer21;
+        dft_buffer &buffer2 = (0 == buffer_index) ? m_buffer12 : m_buffer22;
 
-        fftwf_complex *spectrum = (0 == buffer_index) ? m_spectrum1 : m_spectrum2;
+        dft_buffer &spectrum = (0 == buffer_index) ? m_spectrum1 : m_spectrum2;
 
         size_t &number_of_ffts = (0 == buffer_index) ? m_number_of_ffts1 : m_number_of_ffts2;
 
         int &buffer_head1 = 0 == (buffer_index) ? m_buffer_head11 : m_buffer_head21;
         int &buffer_head2 = 0 == (buffer_index) ? m_buffer_head12 : m_buffer_head22;
 
-        memset(buffer1, 0, sizeof(float) * m_fft_size * 2);
-        memset(buffer2, 0, sizeof(float) * m_fft_size * 2);
-        memset(spectrum, 0, sizeof(float) * m_fft_size * 2);
+        memset(buffer1.m, 0, sizeof(float) * m_fft_size * 2);
+        memset(buffer2.m, 0, sizeof(float) * m_fft_size * 2);
+        memset(spectrum.m, 0, sizeof(float) * m_fft_size * 2);
 
         buffer_head1 = 0;
         buffer_head2 = m_fft_size/2;
