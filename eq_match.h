@@ -279,8 +279,8 @@ struct eq_match
 
     void calculate_response ()
     {
-        DBG_COMPLEX_VECTOR("spectrum1:", m_spectrum1, m_fft_size)
-        DBG_COMPLEX_VECTOR("spectrum2:", m_spectrum2, m_fft_size)
+        DBG_COMPLEX_VECTOR("spectrum1:", m_spectrum1.m, m_fft_size)
+        DBG_COMPLEX_VECTOR("spectrum2:", m_spectrum2.m, m_fft_size)
 
         for (size_t index = 0; index < m_fft_size; ++index) {
             m_spectrum_ratio.m[index][0] = ((m_spectrum2.m[index][0] / m_number_of_ffts2) / (m_spectrum1.m[index][0] / m_number_of_ffts1));
@@ -306,6 +306,7 @@ struct eq_match
 
         for (size_t index = 0; index < m_fft_size; ++index) {
             m_log.m[index][0] = log(m_spectrum_ratio.m[index][0]);
+            m_log.m[index][1] = 0;
         }
 
         DBG_COMPLEX_VECTOR("log:", m_spectrum_ratio.m, m_fft_size)
@@ -318,7 +319,7 @@ struct eq_match
             m_ifft_log.m[index][0] /= m_fft_size;
         }
 
-        DBG_COMPLEX_VECTOR("ifft:", m_ifft_log, m_fft_size)
+        DBG_COMPLEX_VECTOR("ifft:", m_ifft_log.m, m_fft_size)
 
         // fold
         for (size_t index = 0; index < m_fft_size; ++index) {
@@ -367,9 +368,9 @@ struct eq_match
             m_minimum_phase_response[index] = m_ifft_exp_fft_fold_ifft_log.m[index][0];
         }
 
-        DBG_REAL_VECTOR("linear phase response:", &m_linear_phase_response[0], m_fft_size)
+        DBG_REAL_VECTOR("linear phase response:", m_linear_phase_response, m_fft_size)
         
-        DBG_REAL_VECTOR("minimum phase response:", &m_minimum_phase_response[0], m_fft_size)
+        DBG_REAL_VECTOR("minimum phase response:", m_minimum_phase_response, m_fft_size)
     }
 
 protected:
