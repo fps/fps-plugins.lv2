@@ -67,8 +67,8 @@ struct dft_buffer
     fftwf_complex *m;
 
     dft_buffer (size_t size) :
-      m_size (size),
-      m(fftwf_alloc_complex (size))
+        m_size (size),
+        m(fftwf_alloc_complex (size))
     {
 
     }
@@ -127,6 +127,13 @@ struct dft
     void ifft (const dft_buffer &in, dft_buffer &out)
     {
         fft (in, out, false);
+
+        // normalize the ifft path
+        for (size_t index = 0; index < m_size; ++index)
+        {
+            out.m[index][0] /= m_size;
+            out.m[index][1] /= m_size;
+        }
     }
 
     // Convenience function
@@ -170,10 +177,13 @@ struct eq_match
     dft_buffer m_buffer22;
     int m_buffer_head22;
 
+    dft_buffer m_current_spectrum;
+
     dft_buffer m_spectrum1;
     dft_buffer m_spectrum2;
 
     dft_buffer m_spectrum_ratio;
+
     dft_buffer m_ifft_spectrum_ratio;
     dft_buffer m_log;
     dft_buffer m_ifft_log;
@@ -188,21 +198,6 @@ struct eq_match
     dft_buffer m_fft_buffer2;
     size_t m_number_of_ffts2;
 
-#if 0
-    fftwf_plan m_fft_plan11;
-    fftwf_plan m_fft_plan12;
-    fftwf_plan m_fft_plan21;
-    fftwf_plan m_fft_plan22;
-
-    fftwf_plan m_fft_plan;
-    fftwf_plan m_ifft_plan;
-
-
-    fftwf_complex *m_fft_buffer3;
-    fftwf_complex *m_fft_buffer4;
-    fftwf_complex *m_fft_buffer5;
-#endif
-
     std::vector<float> m_linear_phase_response;
     std::vector<float> m_minimum_phase_response;
 
@@ -212,10 +207,13 @@ struct eq_match
         m_dft2 (4 * fft_size),
         m_sample_rate (sample_rate),
         m_window(fft_size, 0.f),
+
         m_buffer11 (fft_size),
         m_buffer12 (fft_size),
         m_buffer21 (fft_size),
         m_buffer22 (fft_size),
+
+        m_current_spectrum (fft_size),
         m_spectrum1 (fft_size),
         m_spectrum2 (fft_size),
         m_spectrum_ratio (fft_size),
@@ -226,16 +224,21 @@ struct eq_match
         m_fft_fold_ifft_log (fft_size),
         m_exp_fft_fold_ifft_log (fft_size),
         m_ifft_exp_fft_fold_ifft_log (fft_size),
+
         m_fft_buffer1 (fft_size),
         m_fft_buffer2 (fft_size),
+
         m_linear_phase_response (fft_size),
         m_minimum_phase_response (fft_size)
     {
-        // hann window generation
+        // window generation
+        const float a0 = 25.0f/46.0f;
         for (size_t index = 0; index < fft_size; ++index) {
-            m_window[index] = pow(sin(M_PI * index / fft_size), 2);
+            // m_window[index] = pow(sin(M_PI * index / fft_size), 2);
+            m_window[index] = a0 - (1.0f - a0) * cos(2*M_PI*index/fft_size);
         }
 
+        DBG_REAL_VECTOR("window:", m_window, m_fft_size)
         reset ();
     }
 
@@ -291,17 +294,13 @@ struct eq_match
 
         m_dft1.fft (m_spectrum_ratio, m_ifft_spectrum_ratio);
 
-        for (size_t index = 0; index < m_fft_size; ++index)
-        {
-            m_ifft_spectrum_ratio.m[index][0] /= m_fft_size;
-        }
-
         // IFFT-shift
         for (size_t index = 0; index < m_fft_size; ++index)
         {
             m_linear_phase_response[(index + (m_fft_size/2)) % m_fft_size] = m_ifft_spectrum_ratio.m[index][0];
         }
 
+        DBG_REAL_VECTOR("linear_phase:", m_linear_phase_response, m_fft_size)
         // exp(fft(fold(ifft(log(s)))))
 
         for (size_t index = 0; index < m_fft_size; ++index) {
@@ -313,11 +312,6 @@ struct eq_match
 
         // 3 -> 4
         m_dft1.ifft (m_log, m_ifft_log);
-
-        for (size_t index = 0; index < m_fft_size; ++index)
-        {
-            m_ifft_log.m[index][0] /= m_fft_size;
-        }
 
         DBG_COMPLEX_VECTOR("ifft:", m_ifft_log.m, m_fft_size)
 
@@ -334,6 +328,7 @@ struct eq_match
             }
             if (index == m_fft_size/2) {
                 m_fold_ifft_log.m[index][0] = m_ifft_log.m[index][0];
+                m_fold_ifft_log.m[index][1] = 0;
             }
             if (index > m_fft_size/2) {
                 m_fold_ifft_log.m[index][0] = 0;
@@ -357,11 +352,6 @@ struct eq_match
 
         // 3 -> 4
         m_dft1.ifft (m_exp_fft_fold_ifft_log, m_ifft_exp_fft_fold_ifft_log);
-
-        for (size_t index = 0; index < m_fft_size; ++index)
-        {
-            m_ifft_exp_fft_fold_ifft_log.m[index][0] /= m_fft_size;
-        }
 
         for (size_t index = 0; index < m_fft_size; ++index)
         {
@@ -396,9 +386,9 @@ protected:
 
             if (buffer_head1 >= (int)m_fft_size) {
                     // DBG("execute " << buffer_index << "-1\n")
-                    m_dft1.fft (buffer1, spectrum);
+                    m_dft1.fft (buffer1, m_current_spectrum);
                     for (size_t index = 0; index < m_fft_size; ++index) {
-                            spectrum.m[index][0] += sqrt(pow(spectrum.m[index][0], 2) + pow(spectrum.m[index][1], 2));
+                            spectrum.m[index][0] += sqrt(pow(m_current_spectrum.m[index][0], 2) + pow(m_current_spectrum.m[index][1], 2));
                             spectrum.m[index][1] = 0;
                     }
                     ++number_of_ffts;
@@ -407,9 +397,9 @@ protected:
 
             if (buffer_head2 >= (int)m_fft_size) {
                     // DBG("execute " << buffer_index << "-2\n")
-                    m_dft1.fft (buffer2, spectrum);
+                    m_dft1.fft (buffer2, m_current_spectrum);
                     for (size_t index = 0; index < m_fft_size; ++index) {
-                            spectrum.m[index][0] += sqrt(pow(spectrum.m[index][0], 2) + pow(spectrum.m[index][1], 2));
+                            spectrum.m[index][0] += sqrt(pow(m_current_spectrum.m[index][0], 2) + pow(spectrum.m[index][1], 2));
                             spectrum.m[index][1] = 0;
                     }
                     ++number_of_ffts;
