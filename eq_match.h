@@ -111,7 +111,7 @@ struct dft
     }
 
     // Convenience function
-    void fft_from_real (EQ_MATCH_FLOAT *in, fftwf_complex *out)
+    void fft_from_real (float *in, fftwf_complex *out)
     {
         for (size_t index = 0; index < m_size; ++index)
         {
@@ -136,9 +136,9 @@ struct eq_match
     dft m_dft1;
     dft m_dft2;
 
-    EQ_MATCH_FLOAT m_sample_rate;
+    float m_sample_rate;
 
-    std::vector<EQ_MATCH_FLOAT> m_window;
+    std::vector<float> m_window;
 
     // Buffers to accumulate samples
     fftwf_complex *m_buffer11;
@@ -172,10 +172,10 @@ struct eq_match
     fftwf_complex *m_fft_buffer4;
     fftwf_complex *m_fft_buffer5;
 
-    EQ_MATCH_FLOAT *m_linear_phase_response;
-    EQ_MATCH_FLOAT *m_minimum_phase_response;
+    float *m_linear_phase_response;
+    float *m_minimum_phase_response;
 
-    eq_match (size_t fft_size, EQ_MATCH_FLOAT sample_rate) :
+    eq_match (size_t fft_size, float sample_rate) :
         m_fft_size (fft_size),
         m_dft1 (fft_size),
         m_dft2 (4 * fft_size),
@@ -221,9 +221,9 @@ struct eq_match
 
         m_ifft_plan = fftwf_plan_dft_1d(fft_size, m_fft_buffer3, m_fft_buffer4, FFTW_BACKWARD, FFTW_ESTIMATE);
 
-        m_linear_phase_response = (EQ_MATCH_FLOAT*)malloc (sizeof(EQ_MATCH_FLOAT) * fft_size);
+        m_linear_phase_response = (float*)malloc (sizeof(float) * fft_size);
         
-        m_minimum_phase_response = (EQ_MATCH_FLOAT*)malloc (sizeof(EQ_MATCH_FLOAT) * fft_size);
+        m_minimum_phase_response = (float*)malloc (sizeof(float) * fft_size);
         
         reset ();
     }
@@ -258,14 +258,14 @@ struct eq_match
 
     // Buffers up to FFT_SIZE samples and then calculates the spectrum and adds
     // it to spectrum1
-    void add_frames_to_buffer1 (const EQ_MATCH_FLOAT *buffer, size_t number_of_samples)
+    void add_frames_to_buffer1 (const float *buffer, size_t number_of_samples)
     {
         add_frames_to_buffer (0, buffer, number_of_samples);
     }
 
     // Buffers up to FFT_SIZE samples and then calculates the spectrum and adds
     // it to spectrum2
-    void add_frames_to_buffer2 (const EQ_MATCH_FLOAT *buffer, size_t number_of_samples)
+    void add_frames_to_buffer2 (const float *buffer, size_t number_of_samples)
     {
         add_frames_to_buffer (1, buffer, number_of_samples);
     }
@@ -356,8 +356,8 @@ struct eq_match
         fftwf_execute (m_fft_plan);
 
         for (size_t index = 0; index < m_fft_size; ++index) {
-            std::complex<EQ_MATCH_FLOAT> c(m_fft_buffer5[index][0], m_fft_buffer5[index][1]);
-            std::complex<EQ_MATCH_FLOAT> c2 = std::exp(c);
+            std::complex<float> c(m_fft_buffer5[index][0], m_fft_buffer5[index][1]);
+            std::complex<float> c2 = std::exp(c);
             m_fft_buffer3[index][0] = std::real(c2);
             m_fft_buffer3[index][1] = std::imag(c2);
         }
@@ -376,7 +376,7 @@ struct eq_match
     }
 
 protected:
-    void add_frames_to_buffer (size_t buffer_index, const EQ_MATCH_FLOAT *buffer, size_t number_of_samples)
+    void add_frames_to_buffer (size_t buffer_index, const float *buffer, size_t number_of_samples)
     {
         fftwf_complex *buffer1 = (0 == buffer_index) ? m_buffer11 : m_buffer21;
         fftwf_complex *buffer2 = (0 == buffer_index) ? m_buffer12 : m_buffer22;
@@ -437,9 +437,9 @@ protected:
         int &buffer_head1 = 0 == (buffer_index) ? m_buffer_head11 : m_buffer_head21;
         int &buffer_head2 = 0 == (buffer_index) ? m_buffer_head12 : m_buffer_head22;
 
-        memset(buffer1, 0, sizeof(EQ_MATCH_FLOAT) * m_fft_size * 2);
-        memset(buffer2, 0, sizeof(EQ_MATCH_FLOAT) * m_fft_size * 2);
-        memset(spectrum, 0, sizeof(EQ_MATCH_FLOAT) * m_fft_size * 2);
+        memset(buffer1, 0, sizeof(float) * m_fft_size * 2);
+        memset(buffer2, 0, sizeof(float) * m_fft_size * 2);
+        memset(spectrum, 0, sizeof(float) * m_fft_size * 2);
 
         buffer_head1 = 0;
         buffer_head2 = m_fft_size/2;

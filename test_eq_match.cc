@@ -1,5 +1,3 @@
-#define EQ_MATCH_FLOAT float
-
 #include <sndfile.h>
 #include <stdexcept>
 #include <iostream>
