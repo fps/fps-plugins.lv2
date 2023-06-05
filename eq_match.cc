@@ -4,7 +4,6 @@
 
 #include <FFTConvolver/FFTConvolver.h>
 
-#define EQ_MATCH_FLOAT float
 #include "eq_match.h"
 
 #include "common.h"

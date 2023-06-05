@@ -20,36 +20,7 @@
  * (6) Call calculate_response ()
  * (7) Get the calculated IRs from m_response (linear phase) or
  *         m_minimum_phase_response (which is minimum phase)
- *
- * You need to provide a macro definition for the floating
- * point type used. e.g.
- *
- *     #define EQ_MATCH_FLOAT float
- *
- * or
- *
- *     #define EQ_MATCH_FLOAT double
  */
-
-#if EQ_MATCH_FLOAT == float
-    #define EQ_MATCH_FFTW_COMPLEX fftwf_complex
-    #define EQ_MATCH_FFTW_PLAN fftwf_plan
-    #define EQ_MATCH_FFTW_PLAN_DFT fftwf_plan_dft_1d
-    #define EQ_MATCH_FFTW_ALLOC_COMPLEX fftwf_alloc_complex
-    #define EQ_MATCH_FFTW_FREE fftwf_free
-    #define EQ_MATCH_FFTW_DESTROY_PLAN fftwf_destroy_plan
-    #define EQ_MATCH_FFTW_EXECUTE fftwf_execute
-#elif EQ_MATCH_FLOAT == double
-    #define EQ_MATCH_FFTW_COMPLEX fftw_complex
-    #define EQ_MATCH_FFTW_PLAN fftw_plan
-    #define EQ_MATCH_FFTW_PLAN_DFT fftw_plan_dft_1d
-    #define EQ_MATCH_FFTW_ALLOC_COMPLEX fftw_alloc_complex
-    #define EQ_MATCH_FFTW_FREE fftw_free
-    #define EQ_MATCH_FFTW_DESTROY_PLAN fftw_destroy_plan
-    #define EQ_MATCH_FFTW_EXECUTE fftw_execute
-#else
-    #error "Unexpected value of EQ_MATCH_FLOAT"
-#endif
 
 #ifdef DEBUG
     #define DBG(x) \
@@ -94,30 +65,30 @@ struct dft
 {
     const size_t m_size;
 
-    EQ_MATCH_FFTW_COMPLEX *m_in;
-    EQ_MATCH_FFTW_COMPLEX *m_out;
-    EQ_MATCH_FFTW_PLAN m_plan_forward;
-    EQ_MATCH_FFTW_PLAN m_plan_backward;
+    fftwf_complex *m_in;
+    fftwf_complex *m_out;
+    fftwf_plan m_plan_forward;
+    fftwf_plan m_plan_backward;
 
     dft (const size_t size) :
         m_size (size)
     {
-        m_in = EQ_MATCH_FFTW_ALLOC_COMPLEX (m_size);
-        m_out = EQ_MATCH_FFTW_ALLOC_COMPLEX (m_size);
+        m_in = fftwf_alloc_complex (m_size);
+        m_out = fftwf_alloc_complex (m_size);
 
-        m_plan_forward = EQ_MATCH_FFTW_PLAN_DFT(m_size, m_in, m_out, FFTW_FORWARD, FFTW_ESTIMATE);
-        m_plan_backward = EQ_MATCH_FFTW_PLAN_DFT(m_size, m_in, m_out, FFTW_FORWARD, FFTW_ESTIMATE);
+        m_plan_forward = fftwf_plan_dft_1d(m_size, m_in, m_out, FFTW_FORWARD, FFTW_ESTIMATE);
+        m_plan_backward = fftwf_plan_dft_1d(m_size, m_in, m_out, FFTW_FORWARD, FFTW_ESTIMATE);
     }
 
     ~dft ()
     {
-        EQ_MATCH_FFTW_FREE (m_in);
-        EQ_MATCH_FFTW_FREE (m_out);
-        EQ_MATCH_FFTW_DESTROY_PLAN (m_plan_forward);
-        EQ_MATCH_FFTW_DESTROY_PLAN (m_plan_backward);
+        fftwf_free (m_in);
+        fftwf_free (m_out);
+        fftwf_destroy_plan (m_plan_forward);
+        fftwf_destroy_plan (m_plan_backward);
     }
 
-    void fft (EQ_MATCH_FFTW_COMPLEX *in, EQ_MATCH_FFTW_COMPLEX *out, bool forward = true)
+    void fft (fftwf_complex *in, fftwf_complex *out, bool forward = true)
     {
         for (size_t index = 0; index < m_size; ++index)
         {
@@ -125,7 +96,7 @@ struct dft
             m_in[index][1] = in[index][1];
         }
 
-        EQ_MATCH_FFTW_EXECUTE (forward ? m_plan_forward : m_plan_backward);
+        fftwf_execute (forward ? m_plan_forward : m_plan_backward);
 
         for (size_t index = 0; index < m_size; ++index)
         {
@@ -134,13 +105,13 @@ struct dft
         }
     }
 
-    void ifft (EQ_MATCH_FFTW_COMPLEX *in, EQ_MATCH_FFTW_COMPLEX *out)
+    void ifft (fftwf_complex *in, fftwf_complex *out)
     {
         fft (in, out, false);
     }
 
     // Convenience function
-    void fft_from_real (EQ_MATCH_FLOAT *in, EQ_MATCH_FFTW_COMPLEX *out)
+    void fft_from_real (EQ_MATCH_FLOAT *in, fftwf_complex *out)
     {
         for (size_t index = 0; index < m_size; ++index)
         {
@@ -148,7 +119,7 @@ struct dft
             m_in[index][1] = 0;
         }
 
-        EQ_MATCH_FFTW_EXECUTE (m_plan_forward);
+        fftwf_execute (m_plan_forward);
 
         for (size_t index = 0; index < m_size; ++index)
         {
@@ -170,36 +141,36 @@ struct eq_match
     std::vector<EQ_MATCH_FLOAT> m_window;
 
     // Buffers to accumulate samples
-    EQ_MATCH_FFTW_COMPLEX *m_buffer11;
+    fftwf_complex *m_buffer11;
     int m_buffer_head11;
-    EQ_MATCH_FFTW_COMPLEX *m_buffer12;
+    fftwf_complex *m_buffer12;
     int m_buffer_head12;
 
-    EQ_MATCH_FFTW_COMPLEX *m_buffer21;
+    fftwf_complex *m_buffer21;
     int m_buffer_head21;
-    EQ_MATCH_FFTW_COMPLEX *m_buffer22;
+    fftwf_complex *m_buffer22;
     int m_buffer_head22;
 
-    EQ_MATCH_FFTW_COMPLEX *m_spectrum1;
-    EQ_MATCH_FFTW_COMPLEX *m_spectrum2;
+    fftwf_complex *m_spectrum1;
+    fftwf_complex *m_spectrum2;
 
-    EQ_MATCH_FFTW_PLAN m_fft_plan11;
-    EQ_MATCH_FFTW_PLAN m_fft_plan12;
-    EQ_MATCH_FFTW_PLAN m_fft_plan21;
-    EQ_MATCH_FFTW_PLAN m_fft_plan22;
+    fftwf_plan m_fft_plan11;
+    fftwf_plan m_fft_plan12;
+    fftwf_plan m_fft_plan21;
+    fftwf_plan m_fft_plan22;
 
-    EQ_MATCH_FFTW_PLAN m_fft_plan;
-    EQ_MATCH_FFTW_PLAN m_ifft_plan;
+    fftwf_plan m_fft_plan;
+    fftwf_plan m_ifft_plan;
 
-    EQ_MATCH_FFTW_COMPLEX *m_fft_buffer1;
+    fftwf_complex *m_fft_buffer1;
     size_t m_number_of_ffts1;
 
-    EQ_MATCH_FFTW_COMPLEX *m_fft_buffer2;
+    fftwf_complex *m_fft_buffer2;
     size_t m_number_of_ffts2;
 
-    EQ_MATCH_FFTW_COMPLEX *m_fft_buffer3;
-    EQ_MATCH_FFTW_COMPLEX *m_fft_buffer4;
-    EQ_MATCH_FFTW_COMPLEX *m_fft_buffer5;
+    fftwf_complex *m_fft_buffer3;
+    fftwf_complex *m_fft_buffer4;
+    fftwf_complex *m_fft_buffer5;
 
     EQ_MATCH_FLOAT *m_linear_phase_response;
     EQ_MATCH_FLOAT *m_minimum_phase_response;
@@ -211,44 +182,44 @@ struct eq_match
         m_sample_rate (sample_rate),
         m_window(fft_size, 0.f)
     {
-        m_buffer11 = (EQ_MATCH_FFTW_COMPLEX*)EQ_MATCH_FFTW_ALLOC_COMPLEX (fft_size);
-        m_buffer12 = (EQ_MATCH_FFTW_COMPLEX*)EQ_MATCH_FFTW_ALLOC_COMPLEX (fft_size);
+        m_buffer11 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
+        m_buffer12 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
 
-        m_buffer21 = (EQ_MATCH_FFTW_COMPLEX*)EQ_MATCH_FFTW_ALLOC_COMPLEX (fft_size);
-        m_buffer22 = (EQ_MATCH_FFTW_COMPLEX*)EQ_MATCH_FFTW_ALLOC_COMPLEX (fft_size);
+        m_buffer21 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
+        m_buffer22 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
 
         m_buffer_head11 = 0;
         m_buffer_head12 = fft_size/2;
         m_buffer_head21 = 0;
         m_buffer_head22 = fft_size/2;
 
-        m_spectrum1 = (EQ_MATCH_FFTW_COMPLEX*)EQ_MATCH_FFTW_ALLOC_COMPLEX (fft_size);
-        m_spectrum2 = (EQ_MATCH_FFTW_COMPLEX*)EQ_MATCH_FFTW_ALLOC_COMPLEX (fft_size);
+        m_spectrum1 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
+        m_spectrum2 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
 
-        m_fft_buffer1 = (EQ_MATCH_FFTW_COMPLEX*)EQ_MATCH_FFTW_ALLOC_COMPLEX (fft_size);
+        m_fft_buffer1 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
         m_number_of_ffts1 = 0;
 
-        m_fft_buffer2 = (EQ_MATCH_FFTW_COMPLEX*)EQ_MATCH_FFTW_ALLOC_COMPLEX (fft_size);
+        m_fft_buffer2 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
         m_number_of_ffts2 = 0;
 
-        m_fft_buffer3 = (EQ_MATCH_FFTW_COMPLEX*)EQ_MATCH_FFTW_ALLOC_COMPLEX (fft_size);
-        m_fft_buffer4 = (EQ_MATCH_FFTW_COMPLEX*)EQ_MATCH_FFTW_ALLOC_COMPLEX (fft_size);
-        m_fft_buffer5 = (EQ_MATCH_FFTW_COMPLEX*)EQ_MATCH_FFTW_ALLOC_COMPLEX (fft_size);
+        m_fft_buffer3 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
+        m_fft_buffer4 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
+        m_fft_buffer5 = (fftwf_complex*)fftwf_alloc_complex (fft_size);
 
         // hann window generation
         for (size_t index = 0; index < fft_size; ++index) {
             m_window[index] = pow(sin(M_PI * index / fft_size), 2);
         }
 
-        m_fft_plan11 = EQ_MATCH_FFTW_PLAN_DFT(fft_size, &m_buffer11[0], m_fft_buffer1, FFTW_FORWARD, FFTW_ESTIMATE);
-        m_fft_plan12 = EQ_MATCH_FFTW_PLAN_DFT(fft_size, &m_buffer12[0], m_fft_buffer1, FFTW_FORWARD, FFTW_ESTIMATE);
+        m_fft_plan11 = fftwf_plan_dft_1d(fft_size, &m_buffer11[0], m_fft_buffer1, FFTW_FORWARD, FFTW_ESTIMATE);
+        m_fft_plan12 = fftwf_plan_dft_1d(fft_size, &m_buffer12[0], m_fft_buffer1, FFTW_FORWARD, FFTW_ESTIMATE);
 
-        m_fft_plan21 = EQ_MATCH_FFTW_PLAN_DFT(fft_size, &m_buffer21[0], m_fft_buffer2, FFTW_FORWARD, FFTW_ESTIMATE);
-        m_fft_plan22 = EQ_MATCH_FFTW_PLAN_DFT(fft_size, &m_buffer22[0], m_fft_buffer2, FFTW_FORWARD, FFTW_ESTIMATE);
+        m_fft_plan21 = fftwf_plan_dft_1d(fft_size, &m_buffer21[0], m_fft_buffer2, FFTW_FORWARD, FFTW_ESTIMATE);
+        m_fft_plan22 = fftwf_plan_dft_1d(fft_size, &m_buffer22[0], m_fft_buffer2, FFTW_FORWARD, FFTW_ESTIMATE);
 
-        m_fft_plan = EQ_MATCH_FFTW_PLAN_DFT(fft_size, m_fft_buffer3, m_fft_buffer5, FFTW_FORWARD, FFTW_ESTIMATE);
+        m_fft_plan = fftwf_plan_dft_1d(fft_size, m_fft_buffer3, m_fft_buffer5, FFTW_FORWARD, FFTW_ESTIMATE);
 
-        m_ifft_plan = EQ_MATCH_FFTW_PLAN_DFT(fft_size, m_fft_buffer3, m_fft_buffer4, FFTW_BACKWARD, FFTW_ESTIMATE);
+        m_ifft_plan = fftwf_plan_dft_1d(fft_size, m_fft_buffer3, m_fft_buffer4, FFTW_BACKWARD, FFTW_ESTIMATE);
 
         m_linear_phase_response = (EQ_MATCH_FLOAT*)malloc (sizeof(EQ_MATCH_FLOAT) * fft_size);
         
@@ -259,27 +230,27 @@ struct eq_match
 
     ~eq_match ()
     {
-        EQ_MATCH_FFTW_DESTROY_PLAN (m_fft_plan11);
-        EQ_MATCH_FFTW_DESTROY_PLAN (m_fft_plan12);
-        EQ_MATCH_FFTW_DESTROY_PLAN (m_fft_plan21);
-        EQ_MATCH_FFTW_DESTROY_PLAN (m_fft_plan22);
+        fftwf_destroy_plan (m_fft_plan11);
+        fftwf_destroy_plan (m_fft_plan12);
+        fftwf_destroy_plan (m_fft_plan21);
+        fftwf_destroy_plan (m_fft_plan22);
 
-        EQ_MATCH_FFTW_DESTROY_PLAN (m_fft_plan);
-        EQ_MATCH_FFTW_DESTROY_PLAN (m_ifft_plan);
+        fftwf_destroy_plan (m_fft_plan);
+        fftwf_destroy_plan (m_ifft_plan);
 
-        EQ_MATCH_FFTW_FREE (m_spectrum1);
-        EQ_MATCH_FFTW_FREE (m_spectrum2);
+        fftwf_free (m_spectrum1);
+        fftwf_free (m_spectrum2);
 
-        EQ_MATCH_FFTW_FREE (m_buffer11);
-        EQ_MATCH_FFTW_FREE (m_buffer12);
-        EQ_MATCH_FFTW_FREE (m_buffer22);
-        EQ_MATCH_FFTW_FREE (m_buffer21);
+        fftwf_free (m_buffer11);
+        fftwf_free (m_buffer12);
+        fftwf_free (m_buffer22);
+        fftwf_free (m_buffer21);
 
-        EQ_MATCH_FFTW_FREE (m_fft_buffer1);
-        EQ_MATCH_FFTW_FREE (m_fft_buffer2);
-        EQ_MATCH_FFTW_FREE (m_fft_buffer3);
-        EQ_MATCH_FFTW_FREE (m_fft_buffer4);
-        EQ_MATCH_FFTW_FREE (m_fft_buffer5);
+        fftwf_free (m_fft_buffer1);
+        fftwf_free (m_fft_buffer2);
+        fftwf_free (m_fft_buffer3);
+        fftwf_free (m_fft_buffer4);
+        fftwf_free (m_fft_buffer5);
 
         free (m_linear_phase_response);
         free (m_minimum_phase_response);
@@ -330,7 +301,7 @@ struct eq_match
 
         DBG_COMPLEX_VECTOR("ratio:", m_fft_buffer3, m_fft_size)
 
-        EQ_MATCH_FFTW_EXECUTE(m_ifft_plan);
+        fftwf_execute(m_ifft_plan);
         for (size_t index = 0; index < m_fft_size; ++index)
         {
             m_fft_buffer4[index][0] /= m_fft_size;
@@ -350,7 +321,7 @@ struct eq_match
         DBG_COMPLEX_VECTOR("log:", m_fft_buffer3, m_fft_size)
 
         // 3 -> 4
-        EQ_MATCH_FFTW_EXECUTE(m_ifft_plan);
+        fftwf_execute(m_ifft_plan);
 
         for (size_t index = 0; index < m_fft_size; ++index)
         {
@@ -382,7 +353,7 @@ struct eq_match
         DBG_COMPLEX_VECTOR("fold:", m_fft_buffer3, m_fft_size)
 
         // 3 -> 5
-        EQ_MATCH_FFTW_EXECUTE (m_fft_plan);
+        fftwf_execute (m_fft_plan);
 
         for (size_t index = 0; index < m_fft_size; ++index) {
             std::complex<EQ_MATCH_FLOAT> c(m_fft_buffer5[index][0], m_fft_buffer5[index][1]);
@@ -394,7 +365,7 @@ struct eq_match
         DBG_COMPLEX_VECTOR("exp:", m_fft_buffer3, m_fft_size)
 
         // 3 -> 4
-        EQ_MATCH_FFTW_EXECUTE (m_ifft_plan);
+        fftwf_execute (m_ifft_plan);
         for (size_t index = 0; index < m_fft_size; ++index) m_fft_buffer4[index][0] /= m_fft_size;
 
         for (size_t index = 0; index < m_fft_size; ++index) m_minimum_phase_response[index] = m_fft_buffer4[index][0];
@@ -407,15 +378,15 @@ struct eq_match
 protected:
     void add_frames_to_buffer (size_t buffer_index, const EQ_MATCH_FLOAT *buffer, size_t number_of_samples)
     {
-        EQ_MATCH_FFTW_COMPLEX *buffer1 = (0 == buffer_index) ? m_buffer11 : m_buffer21;
-        EQ_MATCH_FFTW_COMPLEX *buffer2 = (0 == buffer_index) ? m_buffer12 : m_buffer22;
+        fftwf_complex *buffer1 = (0 == buffer_index) ? m_buffer11 : m_buffer21;
+        fftwf_complex *buffer2 = (0 == buffer_index) ? m_buffer12 : m_buffer22;
 
-        EQ_MATCH_FFTW_PLAN fft_plan1 = (0 == buffer_index) ? m_fft_plan11 : m_fft_plan21;
-        EQ_MATCH_FFTW_PLAN fft_plan2 = (0 == buffer_index) ? m_fft_plan12 : m_fft_plan22;
+        fftwf_plan fft_plan1 = (0 == buffer_index) ? m_fft_plan11 : m_fft_plan21;
+        fftwf_plan fft_plan2 = (0 == buffer_index) ? m_fft_plan12 : m_fft_plan22;
 
-        EQ_MATCH_FFTW_COMPLEX *fft_buffer = (0 == buffer_index) ? m_fft_buffer1 : m_fft_buffer2;
+        fftwf_complex *fft_buffer = (0 == buffer_index) ? m_fft_buffer1 : m_fft_buffer2;
 
-        EQ_MATCH_FFTW_COMPLEX *spectrum = (0 == buffer_index) ? m_spectrum1 : m_spectrum2;
+        fftwf_complex *spectrum = (0 == buffer_index) ? m_spectrum1 : m_spectrum2;
 
         size_t &number_of_ffts = (0 == buffer_index) ? m_number_of_ffts1 : m_number_of_ffts2;
 
@@ -432,7 +403,7 @@ protected:
 
             if (buffer_head1 >= (int)m_fft_size) {
                     // DBG("execute " << buffer_index << "-1\n")
-                    EQ_MATCH_FFTW_EXECUTE (fft_plan1);
+                    fftwf_execute (fft_plan1);
                     for (size_t index = 0; index < m_fft_size; ++index) {
                             spectrum[index][0] += sqrt(pow(fft_buffer[index][0], 2) + pow(fft_buffer[index][1], 2));
                             spectrum[index][1] = 0;
@@ -443,7 +414,7 @@ protected:
 
             if (buffer_head2 >= (int)m_fft_size) {
                     // DBG("execute " << buffer_index << "-2\n")
-                    EQ_MATCH_FFTW_EXECUTE (fft_plan2);
+                    fftwf_execute (fft_plan2);
                     for (size_t index = 0; index < m_fft_size; ++index) {
                             spectrum[index][0] += sqrt(pow(fft_buffer[index][0], 2) + pow(fft_buffer[index][1], 2));
                             spectrum[index][1] = 0;
@@ -456,10 +427,10 @@ protected:
 
     void reset_buffer (size_t buffer_index)
     {
-        EQ_MATCH_FFTW_COMPLEX *buffer1 = (0 == buffer_index) ? m_buffer11 : m_buffer21;
-        EQ_MATCH_FFTW_COMPLEX *buffer2 = (0 == buffer_index) ? m_buffer12 : m_buffer22;
+        fftwf_complex *buffer1 = (0 == buffer_index) ? m_buffer11 : m_buffer21;
+        fftwf_complex *buffer2 = (0 == buffer_index) ? m_buffer12 : m_buffer22;
 
-        EQ_MATCH_FFTW_COMPLEX *spectrum = (0 == buffer_index) ? m_spectrum1 : m_spectrum2;
+        fftwf_complex *spectrum = (0 == buffer_index) ? m_spectrum1 : m_spectrum2;
 
         size_t &number_of_ffts = (0 == buffer_index) ? m_number_of_ffts1 : m_number_of_ffts2;
 
@@ -477,12 +448,12 @@ protected:
     }
 };
 
-#undef EQ_MATCH_FFTW_COMPLEX
-#undef EQ_MATCH_FFTW_PLAN
-#undef EQ_MATCH_FFTW_PLAN_DFT
-#undef EQ_MATCH_FFTW_ALLOC_COMPLEX
-#undef EQ_MATCH_FFTW_FREE
-#undef EQ_MATCH_FFTW_DESTROY_PLAN
-#undef EQ_MATCH_FFTW_EXECUTE
+#undef fftwf_complex
+#undef fftwf_plan
+#undef fftwf_plan_dft_1d
+#undef fftwf_alloc_complex
+#undef fftwf_free
+#undef fftwf_destroy_plan
+#undef fftwf_execute
 
 #endif
