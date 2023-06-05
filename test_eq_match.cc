@@ -78,11 +78,12 @@ int main (int argc, char *argv[])
     
     std::cerr << "Processing files...\n";
 
-    fftconvolver::FFTConvolver minimum_phase_convolver;
-    minimum_phase_convolver.init (64, &match.m_minimum_phase_response[0], FFT_SIZE);
+    fftconvolver::FFTConvolver convolver;
+    convolver.init (64, &match.m_minimum_phase_response[0], FFT_SIZE);
+    // convolver.init (64, &match.m_linear_phase_response[0], FFT_SIZE);
     std::vector<float> minimum_phase_output (input1_count);
 
-    minimum_phase_convolver.process (&input1[0], &minimum_phase_output[0], input1_count);
+    convolver.process (&input1[0], &minimum_phase_output[0], input1_count);
 
     std::cerr << "Writing output files...\n";
 
