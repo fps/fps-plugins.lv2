@@ -161,6 +161,10 @@ struct dft
 struct eq_match
 {
     size_t m_fft_size;
+
+    dft m_dft1;
+    dft m_dft2;
+
     EQ_MATCH_FLOAT m_sample_rate;
 
     std::vector<EQ_MATCH_FLOAT> m_window;
@@ -202,6 +206,8 @@ struct eq_match
 
     eq_match (size_t fft_size, EQ_MATCH_FLOAT sample_rate) :
         m_fft_size (fft_size),
+        m_dft1 (fft_size),
+        m_dft2 (4 * fft_size),
         m_sample_rate (sample_rate),
         m_window(fft_size, 0.f)
     {
