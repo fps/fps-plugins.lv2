@@ -3,14 +3,19 @@
 #include <lv2.h>
 #include <lv2/worker/worker.h>
 #include <lv2/state/state.h>
+#include <lv2/urid/urid.h>
+#include <lv2/atom/atom.h>
 
 #include <FFTConvolver/FFTConvolver.h>
 
 #include "eq_match.h"
 
 #include "common.h"
+
 #define EQ_MATCH_URI FPS_PLUGINS_BASE_URI "/eq_match"
 #define EQ_MATCH_STATE_URI EQ_MATCH_URI "#state"
+#define EQ_MATCH_STATE_LINEAR_PHASE_RESPONSE EQ_MATCH_URI "#linear_phase_response"
+#define EQ_MATCH_STATE_MINIMUM_PHASE_RESPONSE EQ_MATCH_URI "#minimal_phase_response"
 
 #define FFT_SIZE 2048
 #define BLOCK_SIZE 32
@@ -50,6 +55,8 @@ struct plugin
     size_t m_fft_size;
     std::atomic<bool> m_working;
     LV2_Worker_Schedule m_worker_schedule;
+    LV2_URID_Map m_urid_map;
+
     std::vector<float *> m_ports;
 
     // first entry is a command. second entry is the number of samples,
@@ -86,19 +93,31 @@ LV2_Handle instantiate
 {
     const LV2_Feature * feature = 0;
     bool worker_found = false;
+    LV2_Worker_Schedule worker_schedule;
+    LV2_URID_Map urid_map;
+
+    bool urid_map_found = false;
     while ((feature = *(++features)) != 0)
     {
-        if (std::string(feature->URI) == LV2_WORKER__schedule)
+        if (std::string (feature->URI) == LV2_WORKER__schedule)
         {
             worker_found = true;
-            break;
+            worker_schedule = *((LV2_Worker_Schedule*)feature->data);
+        }
+
+        if (std::string (feature->URI) == LV2_URID__map)
+        {
+            urid_map_found = true;
+            urid_map = *((LV2_URID_Map*)feature->data);
         }
     }
 
     if (false == worker_found) return 0;
+    if (false == urid_map_found) return 0;
 
     plugin *instance = new plugin (FFT_SIZE, sample_rate);
-    instance->m_worker_schedule = *((LV2_Worker_Schedule*)feature->data);
+    instance->m_worker_schedule = worker_schedule;
+    instance->m_urid_map = urid_map;
     return (LV2_Handle)instance;
 }
 
@@ -248,8 +267,6 @@ static void run
     state.m_previous_analyze2 = analyze2 > 0;
 }
 
-#define EQ_MATCH_STATE_SAMPLERATE "https://dfdx.eu/fps-plugins.lv2/eq_match#samplerate"
-
 static LV2_State_Status save_state
 (
     LV2_Handle instance,
@@ -263,6 +280,48 @@ static LV2_State_Status save_state
     // plugin_t *pinstance = ((plugin_t*)instance);
     // std::cerr << pinstance->map (
     //store (handle,
+    plugin &the_plugin = *((plugin*)instance);
+
+    LV2_URID linear_phase_response_urid =
+        the_plugin.m_urid_map.map
+        (
+            the_plugin.m_urid_map.handle,
+            EQ_MATCH_STATE_LINEAR_PHASE_RESPONSE
+        );
+
+    LV2_URID minimum_phase_response_urid =
+        the_plugin.m_urid_map.map
+        (
+            the_plugin.m_urid_map.handle,
+            EQ_MATCH_STATE_MINIMUM_PHASE_RESPONSE
+        );
+
+    LV2_State_Status status;
+
+    status = store
+    (
+        handle,
+        linear_phase_response_urid,
+        &the_plugin.m_plugin_state.m_match.m_linear_phase_response[0],
+        the_plugin.m_fft_size * sizeof (float),
+        the_plugin.m_urid_map.map (the_plugin.m_urid_map.handle, LV2_ATOM__Chunk),
+        LV2_STATE_IS_POD
+    );
+
+    if (status != LV2_STATE_SUCCESS) return LV2_STATE_ERR_UNKNOWN;
+
+    status = store
+    (
+        handle,
+        minimum_phase_response_urid,
+        &the_plugin.m_plugin_state.m_match.m_minimum_phase_response[0],
+        the_plugin.m_fft_size * sizeof (float),
+        the_plugin.m_urid_map.map (the_plugin.m_urid_map.handle, LV2_ATOM__Chunk),
+        LV2_STATE_IS_POD
+    );
+
+    if (status != LV2_STATE_SUCCESS) return LV2_STATE_ERR_UNKNOWN;
+
     return LV2_STATE_SUCCESS;
 }
 
@@ -276,6 +335,63 @@ static LV2_State_Status restore_state
 )
 {
     std::cerr << "restore state\n";
+
+    plugin &the_plugin = *((plugin*)instance);
+
+    LV2_URID linear_phase_response_urid =
+        the_plugin.m_urid_map.map
+        (
+            the_plugin.m_urid_map.handle,
+            EQ_MATCH_STATE_LINEAR_PHASE_RESPONSE
+        );
+
+    LV2_URID minimum_phase_response_urid =
+        the_plugin.m_urid_map.map
+        (
+            the_plugin.m_urid_map.handle,
+            EQ_MATCH_STATE_MINIMUM_PHASE_RESPONSE
+        );
+
+    size_t size;
+
+    std::cerr << "retrieving state 1...\n";
+
+    float *linear_phase_response_data =
+        (float*)retrieve
+        (
+            handle,
+            linear_phase_response_urid,
+            &size,
+            0,
+            0
+        );
+
+    if (size != sizeof (float) * the_plugin.m_fft_size) return LV2_STATE_ERR_UNKNOWN;
+
+    std::cerr << "retrieving state 2...\n";
+
+    float *minimum_phase_response_data =
+        (float*)retrieve
+        (
+            handle,
+            minimum_phase_response_urid,
+            &size,
+            0,
+            0
+        );
+
+    if (size != sizeof (float) * the_plugin.m_fft_size) return LV2_STATE_ERR_UNKNOWN;
+
+    std::cerr << "setting up convolvers...\n";
+
+    the_plugin.m_plugin_state.m_match.reset ();
+
+    the_plugin.m_plugin_state.m_linear_phase_convolver.init
+        (BLOCK_SIZE, linear_phase_response_data, FFT_SIZE);
+
+    the_plugin.m_plugin_state.m_minimum_phase_convolver.init
+        (BLOCK_SIZE, minimum_phase_response_data, FFT_SIZE);
+
     return LV2_STATE_SUCCESS;
 }
 
