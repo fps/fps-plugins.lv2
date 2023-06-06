@@ -166,19 +166,6 @@ static void run
             2 * sizeof (float),
             &the_plugin.m_worker_schedule_buffer[0]
         );
-
-#if 0
-        state.m_linear_phase_convolver.reset ();
-        state.m_minimum_phase_convolver.reset ();
-
-        state.m_match.calculate_response ();
-
-        state.m_linear_phase_convolver.init
-            (BLOCK_SIZE, &state.m_match.m_linear_phase_response[0], FFT_SIZE);
-
-        state.m_minimum_phase_convolver.init
-            (BLOCK_SIZE, &state.m_match.m_minimum_phase_response[0], FFT_SIZE);
-#endif
     }
 
     if (analyze1 > 0)
@@ -206,7 +193,6 @@ static void run
                 &the_plugin.m_worker_schedule_buffer[0]
             );
         }
-        // state.m_match.add_frames_to_buffer1 (in, sample_count);
     }
 
     if (analyze2 > 0)
@@ -234,7 +220,6 @@ static void run
                 &the_plugin.m_worker_schedule_buffer[0]
             );
         }
-        // state.m_match.add_frames_to_buffer2 (in, sample_count);
     }
 
     if (apply > 0 && !the_plugin.m_working)
@@ -311,28 +296,28 @@ LV2_Worker_Status work
 {
     plugin &the_plugin = *((plugin*)instance);
 
-    std::cerr << "work: " << size << "\n";
+    // std::cerr << "work: " << size << "\n";
     if (size >= 2 * sizeof (float))
     {
         float the_cmd = ((float*)data)[0];
         float the_size = ((float*)data)[1];
-        std::cerr << the_cmd << " " << the_size << "\n";
+        // std::cerr << the_cmd << " " << the_size << "\n";
 
         if (the_cmd == 1)
         {
-            std::cerr << "work: add frames to buffer 1: " << the_size << " frames.\n";
+            // std::cerr << "work: add frames to buffer 1: " << the_size << " frames.\n";
             the_plugin.m_plugin_state.m_match.add_frames_to_buffer1 (((float*)data)+2, the_size);
         }
         else
         if (the_cmd == 2)
         {
-            std::cerr << "work: add frames to buffer 2: " << the_size << " frames.\n";
+            // std::cerr << "work: add frames to buffer 2: " << the_size << " frames.\n";
             the_plugin.m_plugin_state.m_match.add_frames_to_buffer2 (((float*)data)+2, the_size);
         }
         else
         if (the_cmd == 3)
         {
-            std::cerr << "work: calculate response\n";
+            // std::cerr << "work: calculate response\n";
             the_plugin.m_plugin_state.m_linear_phase_convolver.reset ();
             the_plugin.m_plugin_state.m_minimum_phase_convolver.reset ();
 
@@ -345,7 +330,7 @@ LV2_Worker_Status work
                 (BLOCK_SIZE, &the_plugin.m_plugin_state.m_match.m_minimum_phase_response[0], FFT_SIZE);
 
             the_plugin.m_working = false;
-            std::cerr << "work: done.\n";
+            // std::cerr << "work: done.\n";
         }
     }
     else
@@ -379,16 +364,16 @@ static LV2_Worker_Interface worker_interface =
 
 static const void *extension_data (const char *uri)
 {
-    std::cerr << "get extension_data. URI: " << uri << "\n";
+    // std::cerr << "get extension_data. URI: " << uri << "\n";
     if (std::string(uri) == LV2_STATE__interface)
     {
-        std::cerr << "get extension data for state\n";
+        // std::cerr << "get extension data for state\n";
         return &state_interface;
     }
 
     if (std::string(uri) == LV2_WORKER__interface)
     {
-        std::cerr << "get extension data for worker\n";
+        // std::cerr << "get extension data for worker\n";
         return &worker_interface;
     }
 
