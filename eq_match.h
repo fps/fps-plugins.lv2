@@ -280,7 +280,7 @@ struct eq_match
         dft_buffer spectrum_ratio (m_fft_size);
         for (size_t index = 0; index < m_fft_size; ++index) {
             spectrum_ratio.m[index][0] =
-              m_spectrum2.m[index][0] / m_spectrum1.m[index][0];
+              (m_spectrum2.m[index][0] / power2) / (m_spectrum1.m[index][0] / power1);
 
             spectrum_ratio.m[index][1] = 0;
         }
