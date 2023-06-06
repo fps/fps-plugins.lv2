@@ -353,6 +353,8 @@ static LV2_State_Status restore_state
         );
 
     size_t size;
+    uint32_t type;
+    uint32_t the_flags;
 
     std::cerr << "retrieving state 1...\n";
 
@@ -362,11 +364,12 @@ static LV2_State_Status restore_state
             handle,
             linear_phase_response_urid,
             &size,
-            0,
-            0
+            &type,
+            &the_flags
         );
 
     if (size != sizeof (float) * the_plugin.m_fft_size) return LV2_STATE_ERR_UNKNOWN;
+    if (linear_phase_response_data == 0) return LV2_STATE_ERR_UNKNOWN;
 
     std::cerr << "retrieving state 2...\n";
 
@@ -376,11 +379,12 @@ static LV2_State_Status restore_state
             handle,
             minimum_phase_response_urid,
             &size,
-            0,
-            0
+            &type,
+            &the_flags
         );
 
     if (size != sizeof (float) * the_plugin.m_fft_size) return LV2_STATE_ERR_UNKNOWN;
+    if (minimum_phase_response_data == 0) return LV2_STATE_ERR_UNKNOWN;
 
     std::cerr << "setting up convolvers...\n";
 
