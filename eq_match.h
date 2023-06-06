@@ -264,12 +264,23 @@ struct eq_match
         DBG_COMPLEX_VECTOR("spectrum1:", m_spectrum1.m, m_fft_size)
         DBG_COMPLEX_VECTOR("spectrum2:", m_spectrum2.m, m_fft_size)
 
+        // Calculate powers of real spectra...
+        float power1 = 0;
+        for (size_t index = 0; index < m_fft_size; ++index)
+        {
+            power1 += m_spectrum1.m[index][0] * m_spectrum1.m[index][0];
+        }
+
+        float power2 = 0;
+        for (size_t index = 0; index < m_fft_size; ++index)
+        {
+            power2 += m_spectrum2.m[index][0] * m_spectrum2.m[index][0];
+        }
+
         dft_buffer spectrum_ratio (m_fft_size);
         for (size_t index = 0; index < m_fft_size; ++index) {
             spectrum_ratio.m[index][0] =
-              ((m_spectrum2.m[index][0] / m_number_of_ffts2)
-              /
-              (m_spectrum1.m[index][0] / m_number_of_ffts1));
+              m_spectrum2.m[index][0] / m_spectrum1.m[index][0];
 
             spectrum_ratio.m[index][1] = 0;
         }
