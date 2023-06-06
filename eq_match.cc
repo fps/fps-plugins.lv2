@@ -276,10 +276,7 @@ static LV2_State_Status save_state
     const LV2_Feature *const *features
 )
 {
-    std::cerr << "save state\n";
-    // plugin_t *pinstance = ((plugin_t*)instance);
-    // std::cerr << pinstance->map (
-    //store (handle,
+    // std::cerr << "save state\n";
     plugin &the_plugin = *((plugin*)instance);
 
     LV2_URID linear_phase_response_urid =
@@ -334,7 +331,7 @@ static LV2_State_Status restore_state
     const LV2_Feature *const *features
 )
 {
-    std::cerr << "restore state\n";
+    // std::cerr << "restore state\n";
 
     plugin &the_plugin = *((plugin*)instance);
 
@@ -356,7 +353,7 @@ static LV2_State_Status restore_state
     uint32_t type;
     uint32_t the_flags;
 
-    std::cerr << "retrieving state 1...\n";
+    // std::cerr << "retrieving state 1...\n";
 
     float *linear_phase_response_data =
         (float*)retrieve
@@ -371,7 +368,7 @@ static LV2_State_Status restore_state
     if (size != sizeof (float) * the_plugin.m_fft_size) return LV2_STATE_ERR_UNKNOWN;
     if (linear_phase_response_data == 0) return LV2_STATE_ERR_UNKNOWN;
 
-    std::cerr << "retrieving state 2...\n";
+    // std::cerr << "retrieving state 2...\n";
 
     float *minimum_phase_response_data =
         (float*)retrieve
@@ -386,7 +383,7 @@ static LV2_State_Status restore_state
     if (size != sizeof (float) * the_plugin.m_fft_size) return LV2_STATE_ERR_UNKNOWN;
     if (minimum_phase_response_data == 0) return LV2_STATE_ERR_UNKNOWN;
 
-    std::cerr << "setting up convolvers...\n";
+    // std::cerr << "setting up convolvers...\n";
 
     the_plugin.m_plugin_state.m_match.reset ();
 
