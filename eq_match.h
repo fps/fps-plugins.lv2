@@ -464,12 +464,4 @@ protected:
     }
 };
 
-#undef fftwf_complex
-#undef fftwf_plan
-#undef fftwf_plan_dft_1d
-#undef fftwf_alloc_complex
-#undef fftwf_free
-#undef fftwf_destroy_plan
-#undef fftwf_execute
-
 #endif
