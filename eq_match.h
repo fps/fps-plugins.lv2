@@ -327,6 +327,7 @@ struct eq_match
             energy += powf(extended_spectrum.m[index][0], 2);
         }
 
+        // std::cout << energy << "\n";
 #if 0
         for (size_t index = 0; index < m_extended_fft_size; ++index)
         {
