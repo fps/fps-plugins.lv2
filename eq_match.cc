@@ -17,8 +17,11 @@
 #define EQ_MATCH_STATE_LINEAR_PHASE_RESPONSE EQ_MATCH_URI "#linear_phase_response"
 #define EQ_MATCH_STATE_MINIMUM_PHASE_RESPONSE EQ_MATCH_URI "#minimal_phase_response"
 
-#define FFT_SIZE 2048
-#define BLOCK_SIZE 32
+#define EQ_MATCH_FFT_SIZE 2048
+#define EQ_MATCH_BLOCK_SIZE 32
+
+// #define EQ_MATCH_LOG(x) { std::cerr << x; }
+#define EQ_MATCH_LOG(x) { }
 
 struct plugin_state
 {
@@ -50,10 +53,10 @@ struct plugin_state
         m_minimum_phase_convolver.reset ();
 
         m_linear_phase_convolver.init
-            (BLOCK_SIZE, &m_match.m_linear_phase_response[0], m_match.m_linear_phase_response.size ());
+            (EQ_MATCH_BLOCK_SIZE, &m_match.m_linear_phase_response[0], m_match.m_linear_phase_response.size ());
 
         m_minimum_phase_convolver.init
-            (BLOCK_SIZE, &m_match.m_minimum_phase_response[0], m_match.m_minimum_phase_response.size ());
+            (EQ_MATCH_BLOCK_SIZE, &m_match.m_minimum_phase_response[0], m_match.m_minimum_phase_response.size ());
     }
 };
 
@@ -97,6 +100,7 @@ LV2_Handle instantiate
     const LV2_Feature *const *features
 )
 {
+    EQ_MATCH_LOG("eq_match: instantiate\n")
     const LV2_Feature * feature = 0;
     bool worker_found = false;
     LV2_Worker_Schedule worker_schedule;
@@ -121,7 +125,7 @@ LV2_Handle instantiate
     if (false == worker_found) return 0;
     if (false == urid_map_found) return 0;
 
-    plugin *instance = new plugin (FFT_SIZE, sample_rate);
+    plugin *instance = new plugin (EQ_MATCH_FFT_SIZE, sample_rate);
     instance->m_worker_schedule = worker_schedule;
     instance->m_urid_map = urid_map;
     return (LV2_Handle)instance;
@@ -129,11 +133,13 @@ LV2_Handle instantiate
 
 static void activate (LV2_Handle instance)
 {
-  ((plugin*)instance)->m_plugin_state.reset ();
+    EQ_MATCH_LOG("eq_match: activate\n")
+    ((plugin*)instance)->m_plugin_state.init ();
 }
 
 static void cleanup(LV2_Handle instance)
 {
+    EQ_MATCH_LOG("eq_match: cleanup\n")
     // fftw_cleanup ();
     delete ((plugin*)instance);
 }
@@ -308,7 +314,7 @@ static LV2_State_Status save_state
     const LV2_Feature *const *features
 )
 {
-    // std::cerr << "save state\n";
+    EQ_MATCH_LOG("eq_match: save state\n")
     plugin &the_plugin = *((plugin*)instance);
 
     LV2_URID linear_phase_response_urid =
@@ -365,7 +371,7 @@ static LV2_State_Status restore_state
     const LV2_Feature *const *features
 )
 {
-    // std::cerr << "restore state\n";
+    EQ_MATCH_LOG("eq_match: restore state\n")
 
     plugin &the_plugin = *((plugin*)instance);
 
@@ -387,7 +393,7 @@ static LV2_State_Status restore_state
     uint32_t type;
     uint32_t the_flags;
 
-    // std::cerr << "retrieving state 1...\n";
+    EQ_MATCH_LOG("retrieving state 1...\n")
 
     plugin_state &the_state = the_plugin.m_plugin_state;
 
@@ -404,7 +410,7 @@ static LV2_State_Status restore_state
     if (size != sizeof (float) * the_state.m_match.m_linear_phase_response.size ()) return LV2_STATE_ERR_UNKNOWN;
     if (linear_phase_response_data == 0) return LV2_STATE_ERR_UNKNOWN;
 
-    // std::cerr << "retrieving state 2...\n";
+    EQ_MATCH_LOG("retrieving state 2...\n")
 
     float *minimum_phase_response_data =
         (float*)retrieve
@@ -419,16 +425,25 @@ static LV2_State_Status restore_state
     if (size != sizeof (float) * the_state.m_match.m_minimum_phase_response.size ()) return LV2_STATE_ERR_UNKNOWN;
     if (minimum_phase_response_data == 0) return LV2_STATE_ERR_UNKNOWN;
 
-    // std::cerr << "setting up convolvers...\n";
+    EQ_MATCH_LOG("setting up convolvers...\n")
 
-    the_plugin.m_plugin_state.m_match.reset ();
+    the_state.m_match.reset ();
+    std::copy
+    (
+        linear_phase_response_data, 
+        linear_phase_response_data + the_state.m_match.m_linear_phase_response.size (), 
+        the_state.m_match.m_linear_phase_response.begin ()
+    );
+    
+    std::copy
+    (
+        minimum_phase_response_data, 
+        minimum_phase_response_data + the_state.m_match.m_minimum_phase_response.size (), 
+        the_state.m_match.m_minimum_phase_response.begin ()
+    );
 
-    the_state.m_linear_phase_convolver.init
-        (BLOCK_SIZE, linear_phase_response_data, FFT_SIZE);
-
-    the_state.m_minimum_phase_convolver.init
-        (BLOCK_SIZE, minimum_phase_response_data, FFT_SIZE);
-
+    the_state.init ();
+    
     return LV2_STATE_SUCCESS;
 }
 
@@ -447,38 +462,39 @@ LV2_Worker_Status work
     const void *data
 )
 {
+    EQ_MATCH_LOG("eq_match: work: " << size << "\n")
+
     plugin &the_plugin = *((plugin*)instance);
     plugin_state &the_state = the_plugin.m_plugin_state;
     eq_match &the_match = the_state.m_match;
 
-    // std::cerr << "work: " << size << "\n";
     if (size >= 2 * sizeof (float))
     {
         float the_cmd = ((float*)data)[0];
         float the_size = ((float*)data)[1];
-        // std::cerr << the_cmd << " " << the_size << "\n";
+        EQ_MATCH_LOG(the_cmd << " " << the_size << "\n")
 
         if (the_cmd == (float)plugin::WORKER_COMMAND::ADD_FRAMES_TO_BUFFER1)
         {
-            // std::cerr << "work: add frames to buffer 1: " << the_size << " frames.\n";
+            EQ_MATCH_LOG("work: add frames to buffer 1: " << the_size << " frames.\n")
             the_match.add_frames_to_buffer1 (((float*)data)+2, the_size);
         }
         else
         if (the_cmd == (float)plugin::WORKER_COMMAND::ADD_FRAMES_TO_BUFFER2)
         {
-            // std::cerr << "work: add frames to buffer 2: " << the_size << " frames.\n";
+            EQ_MATCH_LOG("work: add frames to buffer 2: " << the_size << " frames.\n")
             the_match.add_frames_to_buffer2 (((float*)data)+2, the_size);
         }
         else
         if (the_cmd == (float)plugin::WORKER_COMMAND::CALCULATE_RESPONSE)
         {
-            // std::cerr << "work: calculate response\n";
+            EQ_MATCH_LOG("work: calculate response\n")
             the_match.calculate_response ();
 
             the_state.init ();
 
             the_plugin.m_working = false;
-            // std::cerr << "work: done.\n";
+            EQ_MATCH_LOG("work: done.\n")
         }
         else
         if (the_cmd == (float)plugin::WORKER_COMMAND::RESET_BUFFER1)
@@ -492,7 +508,7 @@ LV2_Worker_Status work
         }
         else
         {
-            std::cerr << "eq_match: Unknown command\n";
+            EQ_MATCH_LOG("eq_match: Unknown command\n")
             return LV2_WORKER_ERR_UNKNOWN;
         }
     }
@@ -527,16 +543,16 @@ static LV2_Worker_Interface worker_interface =
 
 static const void *extension_data (const char *uri)
 {
-    // std::cerr << "get extension_data. URI: " << uri << "\n";
+    EQ_MATCH_LOG("get extension_data. URI: " << uri << "\n")
     if (std::string(uri) == LV2_STATE__interface)
     {
-        // std::cerr << "get extension data for state\n";
+        EQ_MATCH_LOG("get extension data for state\n")
         return &state_interface;
     }
 
     if (std::string(uri) == LV2_WORKER__interface)
     {
-        // std::cerr << "get extension data for worker\n";
+        EQ_MATCH_LOG("get extension data for worker\n")
         return &worker_interface;
     }
 
