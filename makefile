@@ -19,7 +19,7 @@ plugins: lv2/fps-plugins.lv2/dynamics.so lv2/fps-plugins.lv2/eq_match.so
 lv2/fps-plugins.lv2/dynamics.so: dynamics.cc makefile
 	g++ -std=c++20 ${CXX_EXTRA_FLAGS} dynamics.cc -pedantic -Wall -Werror -shared -o lv2/fps-plugins.lv2/dynamics.so
 
-lv2/fps-plugins.lv2/eq_match.so: eq_match.cc eq_match.h lv2/fps-plugins.lv2/eq_match.ttl makefile
+lv2/fps-plugins.lv2/eq_match.so: eq_match.cc eq_match.h makefile
 	g++ -std=c++20 ${CXX_EXTRA_FLAGS} eq_match.cc ${FFTCONVOLVER_SOURCES} -pedantic -Wall -Werror -shared -o lv2/fps-plugins.lv2/eq_match.so -lfftw3f -lm
 
 test_eq_match: test_eq_match.cc eq_match.h makefile
