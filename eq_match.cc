@@ -35,44 +35,50 @@ struct plugin_state
         m_previous_analyze1 (false),
         m_previous_analyze2 (false)
     {
-      reset ();
+        reset ();
     }
 
     void reset ()
     {
-      m_match.reset ();
+        m_match.reset ();
+        init ();
+    }
 
-      m_linear_phase_convolver.init
-          (BLOCK_SIZE, &m_match.m_minimum_phase_response[0], FFT_SIZE);
+    void init ()
+    {
+        m_linear_phase_convolver.reset ();
+        m_minimum_phase_convolver.reset ();
 
-      m_minimum_phase_convolver.init
-          (BLOCK_SIZE, &m_match.m_minimum_phase_response[0], FFT_SIZE);
+        m_linear_phase_convolver.init
+            (BLOCK_SIZE, &m_match.m_linear_phase_response[0], m_match.m_linear_phase_response.size ());
+
+        m_minimum_phase_convolver.init
+            (BLOCK_SIZE, &m_match.m_minimum_phase_response[0], m_match.m_minimum_phase_response.size ());
     }
 };
 
 struct plugin
 {
-    size_t m_fft_size;
     std::atomic<bool> m_working;
     LV2_Worker_Schedule m_worker_schedule;
     LV2_URID_Map m_urid_map;
 
     std::vector<float *> m_ports;
 
-    // first entry is a command. second entry is the number of samples,
-    // then come the samples. Commands:
-    // 1 - add frames to buffer 1
-    // 2 - add frames to buffer 2
-    // 3 - calculate calculate (second entry == 0)
-    // 4 - reset (second entry == 0)
-    // 5 - linear phase response (work response)
-    // 6 - minimal phase response (work response)
+    enum WORKER_COMMAND
+    {
+        ADD_FRAMES_TO_BUFFER1 = 1,
+        ADD_FRAMES_TO_BUFFER2,
+        CALCULATE_RESPONSE,
+        RESET_BUFFER1,
+        RESET_BUFFER2
+    };
+
     std::vector<float> m_worker_schedule_buffer;
 
     plugin_state m_plugin_state;
 
     plugin (float sample_rate, size_t fft_size) :
-        m_fft_size (fft_size),
         m_working (false),
         m_ports (7, 0),
         // see comment above
@@ -165,19 +171,41 @@ static void run
 
     if (!previous_analyze1 && analyze1 > 0)
     {
-        state.m_match.reset_buffer1 ();
+        the_plugin.m_worker_schedule_buffer[0] =
+            plugin::WORKER_COMMAND::RESET_BUFFER1;
+
+        the_plugin.m_worker_schedule_buffer[1] = 0;
+
+        the_plugin.m_worker_schedule.schedule_work
+        (
+            the_plugin.m_worker_schedule.handle,
+            2 * sizeof (float),
+            &the_plugin.m_worker_schedule_buffer[0]
+        );
     }
 
     if (!previous_analyze2 && analyze2 > 0)
     {
-        state.m_match.reset_buffer2 ();
+        the_plugin.m_worker_schedule_buffer[0] =
+            plugin::WORKER_COMMAND::RESET_BUFFER2;
+
+        the_plugin.m_worker_schedule_buffer[1] = 0;
+
+        the_plugin.m_worker_schedule.schedule_work
+        (
+            the_plugin.m_worker_schedule.handle,
+            2 * sizeof (float),
+            &the_plugin.m_worker_schedule_buffer[0]
+        );
     }
 
     if ((previous_analyze1 && !(analyze1 > 0)) || (previous_analyze2 && !(analyze2 > 0)))
     {
         the_plugin.m_working = true;
 
-        the_plugin.m_worker_schedule_buffer[0] = 3.0f;
+        the_plugin.m_worker_schedule_buffer[0] =
+            plugin::WORKER_COMMAND::CALCULATE_RESPONSE;
+
         the_plugin.m_worker_schedule_buffer[1] = 0;
         the_plugin.m_worker_schedule.schedule_work
         (
@@ -187,15 +215,24 @@ static void run
         );
     }
 
+    const size_t fft_size = state.m_match.m_fft_size;
+
     if (analyze1 > 0)
     {
         size_t samples_remaining = sample_count;
         size_t samples_written = 0;
         while (samples_remaining)
         {
-            the_plugin.m_worker_schedule_buffer[0] = 1.0f;
+            the_plugin.m_worker_schedule_buffer[0] =
+                plugin::WORKER_COMMAND::ADD_FRAMES_TO_BUFFER1;
+
             size_t samples_in_buffer = 0;
-            for (size_t index = 0; samples_remaining > 0 && index < the_plugin.m_fft_size; ++index)
+            for
+            (
+                size_t index = 0;
+                samples_remaining > 0 && index < fft_size;
+                ++index
+            )
             {
                 the_plugin.m_worker_schedule_buffer[2+index] = in[samples_written];
                 ++samples_in_buffer;
@@ -220,9 +257,16 @@ static void run
         size_t samples_written = 0;
         while (samples_remaining)
         {
-            the_plugin.m_worker_schedule_buffer[0] = 2.0f;
+            the_plugin.m_worker_schedule_buffer[0] =
+                plugin::WORKER_COMMAND::ADD_FRAMES_TO_BUFFER2;
+
             size_t samples_in_buffer = 0;
-            for (size_t index = 0; samples_remaining > 0 && index < the_plugin.m_fft_size; ++index)
+            for
+            (
+                size_t index = 0;
+                samples_remaining > 0 && index < fft_size;
+                ++index
+            )
             {
                 the_plugin.m_worker_schedule_buffer[2+index] = in[samples_written];
                 ++samples_in_buffer;
@@ -295,12 +339,14 @@ static LV2_State_Status save_state
 
     LV2_State_Status status;
 
+    plugin_state &the_state = the_plugin.m_plugin_state;
+
     status = store
     (
         handle,
         linear_phase_response_urid,
-        &the_plugin.m_plugin_state.m_match.m_linear_phase_response[0],
-        the_plugin.m_fft_size * sizeof (float),
+        &the_state.m_match.m_linear_phase_response[0],
+        the_state.m_match.m_linear_phase_response.size () * sizeof (float),
         the_plugin.m_urid_map.map (the_plugin.m_urid_map.handle, LV2_ATOM__Chunk),
         LV2_STATE_IS_POD
     );
@@ -311,8 +357,8 @@ static LV2_State_Status save_state
     (
         handle,
         minimum_phase_response_urid,
-        &the_plugin.m_plugin_state.m_match.m_minimum_phase_response[0],
-        the_plugin.m_fft_size * sizeof (float),
+        &the_state.m_match.m_minimum_phase_response[0],
+        the_state.m_match.m_minimum_phase_response.size () * sizeof (float),
         the_plugin.m_urid_map.map (the_plugin.m_urid_map.handle, LV2_ATOM__Chunk),
         LV2_STATE_IS_POD
     );
@@ -355,6 +401,8 @@ static LV2_State_Status restore_state
 
     // std::cerr << "retrieving state 1...\n";
 
+    plugin_state &the_state = the_plugin.m_plugin_state;
+
     float *linear_phase_response_data =
         (float*)retrieve
         (
@@ -365,7 +413,7 @@ static LV2_State_Status restore_state
             &the_flags
         );
 
-    if (size != sizeof (float) * the_plugin.m_fft_size) return LV2_STATE_ERR_UNKNOWN;
+    if (size != sizeof (float) * the_state.m_match.m_linear_phase_response.size ()) return LV2_STATE_ERR_UNKNOWN;
     if (linear_phase_response_data == 0) return LV2_STATE_ERR_UNKNOWN;
 
     // std::cerr << "retrieving state 2...\n";
@@ -380,17 +428,17 @@ static LV2_State_Status restore_state
             &the_flags
         );
 
-    if (size != sizeof (float) * the_plugin.m_fft_size) return LV2_STATE_ERR_UNKNOWN;
+    if (size != sizeof (float) * the_state.m_match.m_minimum_phase_response.size ()) return LV2_STATE_ERR_UNKNOWN;
     if (minimum_phase_response_data == 0) return LV2_STATE_ERR_UNKNOWN;
 
     // std::cerr << "setting up convolvers...\n";
 
     the_plugin.m_plugin_state.m_match.reset ();
 
-    the_plugin.m_plugin_state.m_linear_phase_convolver.init
+    the_state.m_linear_phase_convolver.init
         (BLOCK_SIZE, linear_phase_response_data, FFT_SIZE);
 
-    the_plugin.m_plugin_state.m_minimum_phase_convolver.init
+    the_state.m_minimum_phase_convolver.init
         (BLOCK_SIZE, minimum_phase_response_data, FFT_SIZE);
 
     return LV2_STATE_SUCCESS;
@@ -412,6 +460,8 @@ LV2_Worker_Status work
 )
 {
     plugin &the_plugin = *((plugin*)instance);
+    plugin_state &the_state = the_plugin.m_plugin_state;
+    eq_match &the_match = the_state.m_match;
 
     // std::cerr << "work: " << size << "\n";
     if (size >= 2 * sizeof (float))
@@ -420,34 +470,42 @@ LV2_Worker_Status work
         float the_size = ((float*)data)[1];
         // std::cerr << the_cmd << " " << the_size << "\n";
 
-        if (the_cmd == 1)
+        if (the_cmd == (float)plugin::WORKER_COMMAND::ADD_FRAMES_TO_BUFFER1)
         {
             // std::cerr << "work: add frames to buffer 1: " << the_size << " frames.\n";
-            the_plugin.m_plugin_state.m_match.add_frames_to_buffer1 (((float*)data)+2, the_size);
+            the_match.add_frames_to_buffer1 (((float*)data)+2, the_size);
         }
         else
-        if (the_cmd == 2)
+        if (the_cmd == (float)plugin::WORKER_COMMAND::ADD_FRAMES_TO_BUFFER2)
         {
             // std::cerr << "work: add frames to buffer 2: " << the_size << " frames.\n";
-            the_plugin.m_plugin_state.m_match.add_frames_to_buffer2 (((float*)data)+2, the_size);
+            the_match.add_frames_to_buffer2 (((float*)data)+2, the_size);
         }
         else
-        if (the_cmd == 3)
+        if (the_cmd == (float)plugin::WORKER_COMMAND::CALCULATE_RESPONSE)
         {
             // std::cerr << "work: calculate response\n";
-            the_plugin.m_plugin_state.m_linear_phase_convolver.reset ();
-            the_plugin.m_plugin_state.m_minimum_phase_convolver.reset ();
+            the_match.calculate_response ();
 
-            the_plugin.m_plugin_state.m_match.calculate_response ();
-
-            the_plugin.m_plugin_state.m_linear_phase_convolver.init
-                (BLOCK_SIZE, &the_plugin.m_plugin_state.m_match.m_linear_phase_response[0], FFT_SIZE);
-
-            the_plugin.m_plugin_state.m_minimum_phase_convolver.init
-                (BLOCK_SIZE, &the_plugin.m_plugin_state.m_match.m_minimum_phase_response[0], FFT_SIZE);
+            the_state.init ();
 
             the_plugin.m_working = false;
             // std::cerr << "work: done.\n";
+        }
+        else
+        if (the_cmd == (float)plugin::WORKER_COMMAND::RESET_BUFFER1)
+        {
+            the_match.reset_buffer1 ();
+        }
+        else
+        if (the_cmd == (float)plugin::WORKER_COMMAND::RESET_BUFFER2)
+        {
+            the_match.reset_buffer2 ();
+        }
+        else
+        {
+            std::cerr << "eq_match: Unknown command\n";
+            return LV2_WORKER_ERR_UNKNOWN;
         }
     }
     else

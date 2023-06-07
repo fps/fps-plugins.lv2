@@ -109,6 +109,9 @@ struct dft
 
     void fft (const dft_buffer &in, dft_buffer &out, bool forward = true)
     {
+        assert (in.m_size == m_size);
+        assert (out.m_size == m_size);
+
         for (size_t index = 0; index < m_size; ++index)
         {
             m_in.m[index][0] = in.m[index][0];
@@ -126,6 +129,9 @@ struct dft
 
     void ifft (const dft_buffer &in, dft_buffer &out)
     {
+        assert (in.m_size == m_size);
+        assert (out.m_size == m_size);
+
         fft (in, out, false);
 
         // normalize the ifft path
@@ -137,8 +143,10 @@ struct dft
     }
 
     // Convenience function
-    void fft_from_real (float *in, fftwf_complex *out)
+    void real_fft (const std::vector<float> &in, dft_buffer &out)
     {
+        assert (in.size () == out.m_size);
+
         for (size_t index = 0; index < m_size; ++index)
         {
             m_in.m[index][0] = in[index];
@@ -149,8 +157,8 @@ struct dft
 
         for (size_t index = 0; index < m_size; ++index)
         {
-            out[index][0] = m_out.m[index][0];
-            out[index][1] = m_out.m[index][1];
+            out.m[index][0] = m_out.m[index][0];
+            out.m[index][1] = m_out.m[index][1];
         }
     }
 };
@@ -167,24 +175,18 @@ struct eq_match
     std::vector<float> m_window;
 
     // Buffers to accumulate samples
-    dft_buffer m_buffer11;
-    int m_buffer_head11;
-    dft_buffer m_buffer12;
-    int m_buffer_head12;
+    dft_buffer m_spectrum_buffer11;
+    int m_spectrum_buffer_head11;
+    dft_buffer m_spectrum_buffer12;
+    int m_spectrum_buffer_head12;
 
-    dft_buffer m_buffer21;
-    int m_buffer_head21;
-    dft_buffer m_buffer22;
-    int m_buffer_head22;
+    dft_buffer m_spectrum_buffer21;
+    int m_spectrum_buffer_head21;
+    dft_buffer m_spectrum_buffer22;
+    int m_spectrum_buffer_head22;
 
-    dft_buffer m_spectrum1;
-    dft_buffer m_spectrum2;
-
-    dft_buffer m_fft_buffer1;
-    size_t m_number_of_ffts1;
-
-    dft_buffer m_fft_buffer2;
-    size_t m_number_of_ffts2;
+    dft_buffer m_average_spectrum1;
+    dft_buffer m_average_spectrum2;
 
     std::vector<float> m_linear_phase_response;
     std::vector<float> m_minimum_phase_response;
@@ -196,16 +198,13 @@ struct eq_match
         m_sample_rate (sample_rate),
         m_window(fft_size, 0.f),
 
-        m_buffer11 (fft_size),
-        m_buffer12 (fft_size),
-        m_buffer21 (fft_size),
-        m_buffer22 (fft_size),
+        m_spectrum_buffer11 (fft_size),
+        m_spectrum_buffer12 (fft_size),
+        m_spectrum_buffer21 (fft_size),
+        m_spectrum_buffer22 (fft_size),
 
-        m_spectrum1 (fft_size),
-        m_spectrum2 (fft_size),
-
-        m_fft_buffer1 (fft_size),
-        m_fft_buffer2 (fft_size),
+        m_average_spectrum1 (fft_size),
+        m_average_spectrum2 (fft_size),
 
         m_linear_phase_response (fft_size),
         m_minimum_phase_response (fft_size)
@@ -261,26 +260,26 @@ struct eq_match
 
     void calculate_response ()
     {
-        DBG_COMPLEX_VECTOR("spectrum1:", m_spectrum1.m, m_fft_size)
-        DBG_COMPLEX_VECTOR("spectrum2:", m_spectrum2.m, m_fft_size)
+        DBG_COMPLEX_VECTOR("spectrum1:", m_average_spectrum1.m, m_fft_size)
+        DBG_COMPLEX_VECTOR("spectrum2:", m_average_spectrum2.m, m_fft_size)
 
         // Calculate powers of real spectra...
         float power1 = 0;
         for (size_t index = 0; index < m_fft_size; ++index)
         {
-            power1 += m_spectrum1.m[index][0] * m_spectrum1.m[index][0];
+            power1 += m_average_spectrum1.m[index][0] * m_average_spectrum1.m[index][0];
         }
 
         float power2 = 0;
         for (size_t index = 0; index < m_fft_size; ++index)
         {
-            power2 += m_spectrum2.m[index][0] * m_spectrum2.m[index][0];
+            power2 += m_average_spectrum2.m[index][0] * m_average_spectrum2.m[index][0];
         }
 
         dft_buffer spectrum_ratio (m_fft_size);
         for (size_t index = 0; index < m_fft_size; ++index) {
             spectrum_ratio.m[index][0] =
-              (m_spectrum2.m[index][0] / power2) / (m_spectrum1.m[index][0] / power1);
+              (m_average_spectrum2.m[index][0] / power2) / (m_average_spectrum1.m[index][0] / power1);
 
             spectrum_ratio.m[index][1] = 0;
         }
@@ -298,63 +297,96 @@ struct eq_match
 
         DBG_REAL_VECTOR("linear_phase:", m_linear_phase_response, m_fft_size)
 
+        dft_buffer extended_linear_phase_response (m_fft_size * 4);
+        for (size_t index = 0; index < m_fft_size * 4; ++index)
+        {
+            if (index < m_fft_size)
+            {
+                extended_linear_phase_response.m[index][0] =
+                    m_linear_phase_response[index];
+            }
+            else
+            {
+                extended_linear_phase_response.m[index][0] = 0;
+            }
+            extended_linear_phase_response.m[index][1] = 0;
+        }
+
+        dft_buffer extended_spectrum (m_fft_size * 4);
+        m_dft2.fft (extended_linear_phase_response, extended_spectrum);
+
+        float energy = 0.0f;
+        for (size_t index = 0; index < m_fft_size * 4; ++index)
+        {
+            extended_spectrum.m[index][0] = sqrtf(powf(extended_spectrum.m[index][0], 2) + powf(extended_spectrum.m[index][1], 2));
+            extended_spectrum.m[index][1] = 0;
+            energy += powf(extended_spectrum.m[index][0], 2);
+        }
+
+#if 0
+        for (size_t index = 0; index < m_fft_size * 4; ++index)
+        {
+            extended_spectrum.m[index][0] /= (energy / (m_fft_size * 4));
+        }
+#endif
         // exp(fft(fold(ifft(log(s)))))
 
-        dft_buffer the_log (m_fft_size);
-        for (size_t index = 0; index < m_fft_size; ++index) {
-            the_log.m[index][0] = log(spectrum_ratio.m[index][0]);
+
+        dft_buffer the_log (m_fft_size * 4);
+        for (size_t index = 0; index < m_fft_size * 4; ++index) {
+            the_log.m[index][0] = log(extended_spectrum.m[index][0]);
             the_log.m[index][1] = 0;
         }
 
-        DBG_COMPLEX_VECTOR("log:", the_log.m, m_fft_size)
+        DBG_COMPLEX_VECTOR("log:", the_log.m, m_fft_size * 4)
 
         // 3 -> 4
-        dft_buffer ifft_log (m_fft_size);
-        m_dft1.ifft (the_log, ifft_log);
+        dft_buffer ifft_log (m_fft_size * 4);
+        m_dft2.ifft (the_log, ifft_log);
 
-        DBG_COMPLEX_VECTOR("ifft:", ifft_log.m, m_fft_size)
+        DBG_COMPLEX_VECTOR("ifft:", ifft_log.m, m_fft_size * 4)
 
-        dft_buffer folded (m_fft_size);
+        dft_buffer folded (m_fft_size * 4);
         // fold
-        for (size_t index = 0; index < m_fft_size; ++index) {
+        for (size_t index = 0; index < m_fft_size * 4; ++index) {
             if (index == 0) {
                 folded.m[index][0] = ifft_log.m[index][0];
                 folded.m[index][1] = 0;
             }
-            if (index > 0 && index < m_fft_size/2) {
+            if (index > 0 && index < (m_fft_size * 4) / 2) {
                 folded.m[index][0] = ifft_log.m[index][0];
                 folded.m[index][1] = 0;
-                folded.m[index][0] += ifft_log.m[m_fft_size - index][0];
+                folded.m[index][0] += ifft_log.m[(m_fft_size * 4)- index][0];
             }
-            if (index == m_fft_size/2) {
+            if (index == (m_fft_size * 4) / 2) {
                 folded.m[index][0] = ifft_log.m[index][0];
                 folded.m[index][1] = 0;
             }
-            if (index > m_fft_size/2) {
+            if (index > (m_fft_size * 4) / 2) {
                 folded.m[index][0] = 0;
                 folded.m[index][1] = 0;
             }
         }
 
-        DBG_COMPLEX_VECTOR("fold:", folded.m, m_fft_size)
+        DBG_COMPLEX_VECTOR("fold:", folded.m, m_fft_size * 4)
 
         // 3 -> 5
-        dft_buffer fft_folded (m_fft_size);
-        m_dft1.fft (folded, fft_folded);
+        dft_buffer fft_folded (m_fft_size * 4);
+        m_dft2.fft (folded, fft_folded);
 
-        dft_buffer the_exp (m_fft_size);
-        for (size_t index = 0; index < m_fft_size; ++index) {
+        dft_buffer the_exp (m_fft_size * 4);
+        for (size_t index = 0; index < (m_fft_size * 4); ++index) {
             std::complex<float> c(fft_folded.m[index][0], fft_folded.m[index][1]);
             std::complex<float> c2 = std::exp(c);
             the_exp.m[index][0] = std::real(c2);
             the_exp.m[index][1] = std::imag(c2);
         }
 
-        DBG_COMPLEX_VECTOR("exp:", the_exp.m, m_fft_size)
+        DBG_COMPLEX_VECTOR("exp:", the_exp.m, m_fft_size * 4)
 
         // 3 -> 4
-        dft_buffer ifft_exp (m_fft_size);
-        m_dft1.ifft (the_exp, ifft_exp);
+        dft_buffer ifft_exp (m_fft_size * 4);
+        m_dft2.ifft (the_exp, ifft_exp);
 
         for (size_t index = 0; index < m_fft_size; ++index)
         {
@@ -369,15 +401,13 @@ struct eq_match
 protected:
     void add_frames_to_buffer (size_t buffer_index, const float *buffer, size_t number_of_samples)
     {
-        dft_buffer &buffer1 = (0 == buffer_index) ? m_buffer11 : m_buffer21;
-        dft_buffer &buffer2 = (0 == buffer_index) ? m_buffer12 : m_buffer22;
+        dft_buffer &buffer1 = (0 == buffer_index) ? m_spectrum_buffer11 : m_spectrum_buffer21;
+        dft_buffer &buffer2 = (0 == buffer_index) ? m_spectrum_buffer12 : m_spectrum_buffer22;
 
-        dft_buffer &spectrum = (0 == buffer_index) ? m_spectrum1 : m_spectrum2;
+        dft_buffer &spectrum = (0 == buffer_index) ? m_average_spectrum1 : m_average_spectrum2;
 
-        size_t &number_of_ffts = (0 == buffer_index) ? m_number_of_ffts1 : m_number_of_ffts2;
-
-        int &buffer_head1 = 0 == (buffer_index) ? m_buffer_head11 : m_buffer_head21;
-        int &buffer_head2 = 0 == (buffer_index) ? m_buffer_head12 : m_buffer_head22;
+        int &buffer_head1 = 0 == (buffer_index) ? m_spectrum_buffer_head11 : m_spectrum_buffer_head21;
+        int &buffer_head2 = 0 == (buffer_index) ? m_spectrum_buffer_head12 : m_spectrum_buffer_head22;
 
         for (size_t sample_index = 0; sample_index < number_of_samples; ++sample_index)
         {
@@ -392,10 +422,9 @@ protected:
                     dft_buffer current_spectrum (m_fft_size);
                     m_dft1.fft (buffer1, current_spectrum);
                     for (size_t index = 0; index < m_fft_size; ++index) {
-                            spectrum.m[index][0] += sqrt(pow(current_spectrum.m[index][0], 2) + pow(current_spectrum.m[index][1], 2));
+                            spectrum.m[index][0] += sqrtf(powf(current_spectrum.m[index][0], 2) + powf(current_spectrum.m[index][1], 2));
                             spectrum.m[index][1] = 0;
                     }
-                    ++number_of_ffts;
                     buffer_head1 = 0;
             }
 
@@ -404,10 +433,9 @@ protected:
                     dft_buffer current_spectrum (m_fft_size);
                     m_dft1.fft (buffer2, current_spectrum);
                     for (size_t index = 0; index < m_fft_size; ++index) {
-                            spectrum.m[index][0] += sqrt(pow(current_spectrum.m[index][0], 2) + pow(current_spectrum.m[index][1], 2));
+                            spectrum.m[index][0] += sqrtf(powf(current_spectrum.m[index][0], 2) + powf(current_spectrum.m[index][1], 2));
                             spectrum.m[index][1] = 0;
                     }
-                    ++number_of_ffts;
                     buffer_head2 = 0;
             }
         }
@@ -415,15 +443,13 @@ protected:
 
     void reset_buffer (size_t buffer_index)
     {
-        dft_buffer &buffer1 = (0 == buffer_index) ? m_buffer11 : m_buffer21;
-        dft_buffer &buffer2 = (0 == buffer_index) ? m_buffer12 : m_buffer22;
+        dft_buffer &buffer1 = (0 == buffer_index) ? m_spectrum_buffer11 : m_spectrum_buffer21;
+        dft_buffer &buffer2 = (0 == buffer_index) ? m_spectrum_buffer12 : m_spectrum_buffer22;
 
-        dft_buffer &spectrum = (0 == buffer_index) ? m_spectrum1 : m_spectrum2;
+        dft_buffer &spectrum = (0 == buffer_index) ? m_average_spectrum1 : m_average_spectrum2;
 
-        size_t &number_of_ffts = (0 == buffer_index) ? m_number_of_ffts1 : m_number_of_ffts2;
-
-        int &buffer_head1 = 0 == (buffer_index) ? m_buffer_head11 : m_buffer_head21;
-        int &buffer_head2 = 0 == (buffer_index) ? m_buffer_head12 : m_buffer_head22;
+        int &buffer_head1 = 0 == (buffer_index) ? m_spectrum_buffer_head11 : m_spectrum_buffer_head21;
+        int &buffer_head2 = 0 == (buffer_index) ? m_spectrum_buffer_head12 : m_spectrum_buffer_head22;
 
         memset(buffer1.m, 0, sizeof(float) * m_fft_size * 2);
         memset(buffer2.m, 0, sizeof(float) * m_fft_size * 2);
@@ -431,8 +457,6 @@ protected:
 
         buffer_head1 = 0;
         buffer_head2 = m_fft_size/2;
-
-        number_of_ffts = 0;
     }
 };
 
