@@ -144,7 +144,25 @@ static void connect_port (LV2_Handle instance, uint32_t port, void *data_locatio
         p.m_ports[port] = (float*)data_location;
 }
 
-// #define EPSILON 0.0001f
+static void schedule_worker_command (plugin &the_plugin, int c1, int c2 = 0, float *data = 0, size_t data_size = 0)
+{
+    assert (data_size <= the_plugin.m_plugin_state.m_match.m_fft_size);
+
+    the_plugin.m_worker_schedule_buffer[0] = (float)c1;
+    the_plugin.m_worker_schedule_buffer[1] = (float)c2;
+
+    for (size_t index = 0; index < data_size; ++index)
+    {
+        the_plugin.m_worker_schedule_buffer[2 + index] = data[index];
+    }
+
+    the_plugin.m_worker_schedule.schedule_work
+    (
+        the_plugin.m_worker_schedule.handle,
+        (2 + data_size) * sizeof (float),
+        &the_plugin.m_worker_schedule_buffer[0]
+    );
+}
 
 static void run
 (
@@ -171,48 +189,18 @@ static void run
 
     if (!previous_analyze1 && analyze1 > 0)
     {
-        the_plugin.m_worker_schedule_buffer[0] =
-            plugin::WORKER_COMMAND::RESET_BUFFER1;
-
-        the_plugin.m_worker_schedule_buffer[1] = 0;
-
-        the_plugin.m_worker_schedule.schedule_work
-        (
-            the_plugin.m_worker_schedule.handle,
-            2 * sizeof (float),
-            &the_plugin.m_worker_schedule_buffer[0]
-        );
+        schedule_worker_command (the_plugin, plugin::WORKER_COMMAND::RESET_BUFFER1);
     }
 
     if (!previous_analyze2 && analyze2 > 0)
     {
-        the_plugin.m_worker_schedule_buffer[0] =
-            plugin::WORKER_COMMAND::RESET_BUFFER2;
-
-        the_plugin.m_worker_schedule_buffer[1] = 0;
-
-        the_plugin.m_worker_schedule.schedule_work
-        (
-            the_plugin.m_worker_schedule.handle,
-            2 * sizeof (float),
-            &the_plugin.m_worker_schedule_buffer[0]
-        );
+        schedule_worker_command (the_plugin, plugin::WORKER_COMMAND::RESET_BUFFER2);
     }
 
     if ((previous_analyze1 && !(analyze1 > 0)) || (previous_analyze2 && !(analyze2 > 0)))
     {
         the_plugin.m_working = true;
-
-        the_plugin.m_worker_schedule_buffer[0] =
-            plugin::WORKER_COMMAND::CALCULATE_RESPONSE;
-
-        the_plugin.m_worker_schedule_buffer[1] = 0;
-        the_plugin.m_worker_schedule.schedule_work
-        (
-            the_plugin.m_worker_schedule.handle,
-            2 * sizeof (float),
-            &the_plugin.m_worker_schedule_buffer[0]
-        );
+        schedule_worker_command (the_plugin, plugin::WORKER_COMMAND::CALCULATE_RESPONSE);
     }
 
     const size_t fft_size = state.m_match.m_fft_size;
