@@ -166,6 +166,7 @@ struct dft
 struct eq_match
 {
     size_t m_fft_size;
+    size_t m_extended_fft_size;
 
     dft m_dft1;
     dft m_dft2;
@@ -193,6 +194,7 @@ struct eq_match
 
     eq_match (size_t fft_size, float sample_rate) :
         m_fft_size (fft_size),
+        m_extended_fft_size (fft_size * 4),
         m_dft1 (fft_size),
         m_dft2 (4 * fft_size),
         m_sample_rate (sample_rate),
@@ -297,8 +299,8 @@ struct eq_match
 
         DBG_REAL_VECTOR("linear_phase:", m_linear_phase_response, m_fft_size)
 
-        dft_buffer extended_linear_phase_response (m_fft_size * 4);
-        for (size_t index = 0; index < m_fft_size * 4; ++index)
+        dft_buffer extended_linear_phase_response (m_extended_fft_size);
+        for (size_t index = 0; index < m_extended_fft_size; ++index)
         {
             if (index < m_fft_size)
             {
@@ -312,11 +314,11 @@ struct eq_match
             extended_linear_phase_response.m[index][1] = 0;
         }
 
-        dft_buffer extended_spectrum (m_fft_size * 4);
+        dft_buffer extended_spectrum (m_extended_fft_size);
         m_dft2.fft (extended_linear_phase_response, extended_spectrum);
 
         float energy = 0.0f;
-        for (size_t index = 0; index < m_fft_size * 4; ++index)
+        for (size_t index = 0; index < m_extended_fft_size; ++index)
         {
             extended_spectrum.m[index][0] = sqrtf(powf(extended_spectrum.m[index][0], 2) + powf(extended_spectrum.m[index][1], 2));
             extended_spectrum.m[index][1] = 0;
@@ -324,68 +326,68 @@ struct eq_match
         }
 
 #if 0
-        for (size_t index = 0; index < m_fft_size * 4; ++index)
+        for (size_t index = 0; index < m_extended_fft_size; ++index)
         {
-            extended_spectrum.m[index][0] /= (energy / (m_fft_size * 4));
+            extended_spectrum.m[index][0] /= (energy / (m_extended_fft_size));
         }
 #endif
         // exp(fft(fold(ifft(log(s)))))
 
 
-        dft_buffer the_log (m_fft_size * 4);
-        for (size_t index = 0; index < m_fft_size * 4; ++index) {
+        dft_buffer the_log (m_extended_fft_size);
+        for (size_t index = 0; index < m_extended_fft_size; ++index) {
             the_log.m[index][0] = log(extended_spectrum.m[index][0]);
             the_log.m[index][1] = 0;
         }
 
-        DBG_COMPLEX_VECTOR("log:", the_log.m, m_fft_size * 4)
+        DBG_COMPLEX_VECTOR("log:", the_log.m, m_extended_fft_size)
 
         // 3 -> 4
-        dft_buffer ifft_log (m_fft_size * 4);
+        dft_buffer ifft_log (m_extended_fft_size);
         m_dft2.ifft (the_log, ifft_log);
 
-        DBG_COMPLEX_VECTOR("ifft:", ifft_log.m, m_fft_size * 4)
+        DBG_COMPLEX_VECTOR("ifft:", ifft_log.m, m_extended_fft_size)
 
-        dft_buffer folded (m_fft_size * 4);
+        dft_buffer folded (m_extended_fft_size);
         // fold
-        for (size_t index = 0; index < m_fft_size * 4; ++index) {
+        for (size_t index = 0; index < m_extended_fft_size; ++index) {
             if (index == 0) {
                 folded.m[index][0] = ifft_log.m[index][0];
                 folded.m[index][1] = 0;
             }
-            if (index > 0 && index < (m_fft_size * 4) / 2) {
+            if (index > 0 && index < m_extended_fft_size / 2) {
                 folded.m[index][0] = ifft_log.m[index][0];
                 folded.m[index][1] = 0;
-                folded.m[index][0] += ifft_log.m[(m_fft_size * 4)- index][0];
+                folded.m[index][0] += ifft_log.m[m_extended_fft_size- index][0];
             }
-            if (index == (m_fft_size * 4) / 2) {
+            if (index == m_extended_fft_size / 2) {
                 folded.m[index][0] = ifft_log.m[index][0];
                 folded.m[index][1] = 0;
             }
-            if (index > (m_fft_size * 4) / 2) {
+            if (index > m_extended_fft_size / 2) {
                 folded.m[index][0] = 0;
                 folded.m[index][1] = 0;
             }
         }
 
-        DBG_COMPLEX_VECTOR("fold:", folded.m, m_fft_size * 4)
+        DBG_COMPLEX_VECTOR("fold:", folded.m, m_extended_fft_size)
 
         // 3 -> 5
-        dft_buffer fft_folded (m_fft_size * 4);
+        dft_buffer fft_folded (m_extended_fft_size);
         m_dft2.fft (folded, fft_folded);
 
-        dft_buffer the_exp (m_fft_size * 4);
-        for (size_t index = 0; index < (m_fft_size * 4); ++index) {
+        dft_buffer the_exp (m_extended_fft_size);
+        for (size_t index = 0; index < m_extended_fft_size; ++index) {
             std::complex<float> c(fft_folded.m[index][0], fft_folded.m[index][1]);
             std::complex<float> c2 = std::exp(c);
             the_exp.m[index][0] = std::real(c2);
             the_exp.m[index][1] = std::imag(c2);
         }
 
-        DBG_COMPLEX_VECTOR("exp:", the_exp.m, m_fft_size * 4)
+        DBG_COMPLEX_VECTOR("exp:", the_exp.m, m_extended_fft_size)
 
         // 3 -> 4
-        dft_buffer ifft_exp (m_fft_size * 4);
+        dft_buffer ifft_exp (m_extended_fft_size);
         m_dft2.ifft (the_exp, ifft_exp);
 
         for (size_t index = 0; index < m_fft_size; ++index)
