@@ -9,7 +9,8 @@ int main (int argc, char *argv[])
 {
     if (argc < 7)
     {
-        throw std::runtime_error ("Usage: test_eq_match FFT_SIZE input_file1 input_file2 linear_phase_response_output_file minimum_phase_response_output_file matched_output_file");
+        std::cerr << "Usage: test_eq_match FFT_SIZE input_file1 input_file2 linear_phase_response_output_file minimum_phase_response_output_file matched_output_file\n";
+        return EXIT_FAILURE;
     }
 
     const int FFT_SIZE = atoi (argv[1]);
