@@ -319,23 +319,13 @@ struct eq_match
         dft_buffer extended_spectrum (m_extended_fft_size);
         m_dft2.fft (extended_linear_phase_response, extended_spectrum);
 
-        float energy = 0.0f;
         for (size_t index = 0; index < m_extended_fft_size; ++index)
         {
             extended_spectrum.m[index][0] = sqrtf(powf(extended_spectrum.m[index][0], 2) + powf(extended_spectrum.m[index][1], 2));
             extended_spectrum.m[index][1] = 0;
-            energy += powf(extended_spectrum.m[index][0], 2);
         }
 
-        // std::cout << energy << "\n";
-#if 0
-        for (size_t index = 0; index < m_extended_fft_size; ++index)
-        {
-            extended_spectrum.m[index][0] /= (energy / (m_extended_fft_size));
-        }
-#endif
         // exp(fft(fold(ifft(log(s)))))
-
 
         dft_buffer the_log (m_extended_fft_size);
         for (size_t index = 0; index < m_extended_fft_size; ++index) {
