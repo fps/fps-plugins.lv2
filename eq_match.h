@@ -271,12 +271,14 @@ struct eq_match
         {
             power1 += m_average_spectrum1.m[index][0] * m_average_spectrum1.m[index][0];
         }
+        power1 /= m_fft_size;
 
         float power2 = 0;
         for (size_t index = 0; index < m_fft_size; ++index)
         {
             power2 += m_average_spectrum2.m[index][0] * m_average_spectrum2.m[index][0];
         }
+        power2 /= m_fft_size;
 
         dft_buffer spectrum_ratio (m_fft_size);
         for (size_t index = 0; index < m_fft_size; ++index) {
