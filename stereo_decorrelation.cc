@@ -1,4 +1,5 @@
 #include <atomic>
+#include <algorithm>
 
 #include <lv2.h>
 #include <lv2/worker/worker.h>
@@ -16,6 +17,8 @@
 #define STEREO_DECORRELATION_LOG(x) { std::cerr << "stereo_decorrelation: " << x; }
 // #define STEREO_DECORRELATION_LOG(x) { }
 
+#define STEREO_DECORRELATION_BLOCK_SIZE 32
+
 struct plugin
 {
     std::atomic<bool> m_working;
@@ -29,6 +32,11 @@ struct plugin
 
     float m_previous_decay;
 
+    std::vector<float> m_input_buffer_left;
+    std::vector<float> m_input_buffer_right;
+    std::vector<float> m_output_buffer_left;
+    std::vector<float> m_output_buffer_right;
+    
     fftconvolver::FFTConvolver m_left_convolver;
     fftconvolver::FFTConvolver m_right_convolver;
 
@@ -36,7 +44,12 @@ struct plugin
         m_working (false),
         m_sample_rate (sample_rate),
         m_ports (6, 0),
-        m_stereo_decorrelation (0.1 * sample_rate)
+        m_stereo_decorrelation (0.1 * sample_rate),
+        m_previous_decay (0),
+        m_input_buffer_left (STEREO_DECORRELATION_BLOCK_SIZE, 0),
+        m_input_buffer_right (STEREO_DECORRELATION_BLOCK_SIZE, 0),
+        m_output_buffer_left (STEREO_DECORRELATION_BLOCK_SIZE, 0),
+        m_output_buffer_right (STEREO_DECORRELATION_BLOCK_SIZE, 0)
     {
         STEREO_DECORRELATION_LOG("plugin ()\n");
         init (0.01);
@@ -49,14 +62,14 @@ struct plugin
         
         m_left_convolver.init 
         (
-            32, 
+            STEREO_DECORRELATION_BLOCK_SIZE, 
             &m_stereo_decorrelation.m_left_response[0], 
             m_stereo_decorrelation.m_left_response.size ()
         );
         
         m_right_convolver.init 
         (
-            32, 
+            STEREO_DECORRELATION_BLOCK_SIZE, 
             &m_stereo_decorrelation.m_right_response[0], 
             m_stereo_decorrelation.m_left_response.size ()
         );
@@ -165,16 +178,56 @@ static void run
     }
     else
     {
-        the_plugin.m_left_convolver.process (inl, outl, sample_count);
-        the_plugin.m_right_convolver.process (inr, outr, sample_count);
+        size_t processed_samples = 0;
+        size_t remaining_samples = sample_count;
         
-        const float amount_gain_factor = pow(10, amount/20);
-        for (size_t index = 0; index < sample_count; ++index)
+        while (remaining_samples != 0)
         {
-            outl[index] = amount_gain_factor * outl[index] + inl[index];
-            outr[index] = amount_gain_factor * outr[index] + inr[index];
-            // outl[index] = inl[index];
-            // outr[index] = inr[index];
+            STEREO_DECORRELATION_LOG("remaining: " << remaining_samples << "\n")
+            size_t samples_to_process = (size_t)std::min ((size_t)STEREO_DECORRELATION_BLOCK_SIZE, remaining_samples);
+            
+            STEREO_DECORRELATION_LOG("to process: " << samples_to_process << "\n")
+            
+            std::copy 
+            (
+                inl + processed_samples, 
+                inl + processed_samples + samples_to_process, 
+                the_plugin.m_input_buffer_left.begin ()
+            );
+
+            std::copy 
+            (
+                inr + processed_samples, 
+                inr + processed_samples + samples_to_process, 
+                the_plugin.m_input_buffer_right.begin ()
+            );
+
+            the_plugin.m_left_convolver.process 
+            (
+                &the_plugin.m_input_buffer_left[0], 
+                &the_plugin.m_output_buffer_left[0], 
+                samples_to_process
+            );
+            
+            the_plugin.m_right_convolver.process 
+            (
+                &the_plugin.m_input_buffer_right[0], 
+                &the_plugin.m_output_buffer_right[0], 
+                samples_to_process
+            );
+            
+            const float amount_gain_factor = pow(10, amount/20);
+            for (size_t index = 0; index < samples_to_process; ++index)
+            {
+                outl[index + processed_samples] = amount_gain_factor * the_plugin.m_output_buffer_left[index] + inl[index + processed_samples];
+                outr[index + processed_samples] = amount_gain_factor * the_plugin.m_output_buffer_right[index] + inr[index + processed_samples];
+                
+                // outl[index] = inl[index];
+                // outr[index] = inr[index];
+            }
+            
+            processed_samples += samples_to_process;
+            remaining_samples -= samples_to_process;
         }
     }
     the_plugin.m_previous_decay = decay;

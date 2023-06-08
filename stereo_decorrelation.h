@@ -24,31 +24,23 @@ struct stereo_decorrelation
     stereo_decorrelation (size_t length) :
         m_length (length)
     {
-        std::cerr << "dec: " << length << "\n";
         init (0.01);
     }
 
     void init (float decay)
     {
-        std::cerr << "init\n";
         m_left_response.resize (m_length);
         m_right_response.resize (m_length);
         
-        std::cerr << "init2\n";
         std::mt19937 gen(0); 
-        std::normal_distribution<float> d(0, 1.0f);
+        std::normal_distribution<float> d(0, 0.1f);
         
-        std::cerr << "init3\n";
         for (size_t index = 0; index < m_length; ++index)
         {
             float sample = d (gen);
-            std::cerr << sample << "\n";
             m_left_response[index] = sample * expf(-(index / decay));
             m_right_response[index] = -sample * expf(-(index / decay));
-            
-            std::cerr << m_right_response[index] << "\n";
         }
-        std::cerr << "init4\n";
     }
 };
 

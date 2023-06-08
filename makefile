@@ -1,6 +1,6 @@
 .PHONY: all
 
-CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -I./vendored
+CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -I./vendored -Wall -pedantic
 
 ifdef DEBUG
 CXX_EXTRA_FLAGS += -g3 -DDEBUG
@@ -17,16 +17,16 @@ all: plugins test_eq_match
 plugins: lv2/fps-plugins.lv2/dynamics.so lv2/fps-plugins.lv2/eq_match.so lv2/fps-plugins.lv2/stereo_decorrelation.so
 
 lv2/fps-plugins.lv2/dynamics.so: dynamics.cc makefile
-	g++ -std=c++20 ${CXX_EXTRA_FLAGS} dynamics.cc -pedantic -Wall -Werror -shared -o lv2/fps-plugins.lv2/dynamics.so
+	g++ -std=c++20 ${CXX_EXTRA_FLAGS} dynamics.cc -shared -o lv2/fps-plugins.lv2/dynamics.so
 
 lv2/fps-plugins.lv2/eq_match.so: eq_match.cc eq_match.h makefile
-	g++ -std=c++20 ${CXX_EXTRA_FLAGS} eq_match.cc ${FFTCONVOLVER_SOURCES} -pedantic -Wall -Werror -shared -o lv2/fps-plugins.lv2/eq_match.so -lfftw3f -lm
+	g++ -std=c++20 ${CXX_EXTRA_FLAGS} eq_match.cc ${FFTCONVOLVER_SOURCES} -shared -o lv2/fps-plugins.lv2/eq_match.so -lfftw3f -lm
 
 test_eq_match: test_eq_match.cc eq_match.h makefile
 	g++ -std=c++20 ${CXX_EXTRA_FLAGS} test_eq_match.cc ${FFTCONVOLVER_SOURCES} -o test_eq_match -lfftw3f -lm -lsndfile
 
 lv2/fps-plugins.lv2/stereo_decorrelation.so: stereo_decorrelation.cc stereo_decorrelation.h makefile
-	g++ -std=c++20 ${CXX_EXTRA_FLAGS} stereo_decorrelation.cc ${FFTCONVOLVER_SOURCES} -pedantic -Wall -Werror -shared -o lv2/fps-plugins.lv2/stereo_decorrelation.so -lm
+	g++ -std=c++20 ${CXX_EXTRA_FLAGS} stereo_decorrelation.cc ${FFTCONVOLVER_SOURCES} -shared -o lv2/fps-plugins.lv2/stereo_decorrelation.so -lm
 	
 test: all
 	LV2_PATH=${PWD}/lv2 lv2info https://dfdx.eu/fps-plugins.lv2/relative_dynamics
