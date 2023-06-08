@@ -9,11 +9,7 @@
     a lv2:Plugin ;
     rdfs:seeAlso <eq_match.ttl> .
 
-<https://dfdx.eu/fps-plugins.lv2/stereospread-mono2stereo>
+<https://dfdx.eu/fps-plugins.lv2/stereo_decorrelation>
     a lv2:Plugin ;
-    rdfs:seeAlso <stereospread-mono2stereo.ttl> .
-
-<https://dfdx.eu/fps-plugins.lv2/stereospread-stereo2stereo>
-    a lv2:Plugin ;
-    rdfs:seeAlso <stereospread-stereo2stereo.ttl> .
+    rdfs:seeAlso <stereo_decorrelation.ttl> .
 

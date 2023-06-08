@@ -25,6 +25,9 @@ lv2/fps-plugins.lv2/eq_match.so: eq_match.cc eq_match.h makefile
 test_eq_match: test_eq_match.cc eq_match.h makefile
 	g++ -std=c++20 ${CXX_EXTRA_FLAGS} test_eq_match.cc ${FFTCONVOLVER_SOURCES} -o test_eq_match -lfftw3f -lm -lsndfile
 
+lv2/fps-plugins.lv2/stereo_decorrelation.so: stereo_decorrelation.cc stereo_decorrelation.h makefile
+	g++ -std=c++20 ${CXX_EXTRA_FLAGS} stereo_decorrelation.cc ${FFTCONVOLVER_SOURCES} -pedantic -Wall -Werror -shared -o lv2/fps-plugins.lv2/stereo_decorrelation.so -lfftw3f -lm
+	
 test: all
 	LV2_PATH=${PWD}/lv2 lv2info https://dfdx.eu/fps-plugins.lv2/relative_dynamics
 	LV2_PATH=${PWD}/lv2 valgrind ${VALGRIND_FLAGS} lv2bench https://dfdx.eu/fps-plugins.lv2/relative_dynamics
