@@ -1,5 +1,8 @@
 .PHONY: all
 
+PREFIX ?= /usr
+INSTALL_DIR ?= ${PREFIX}/lib/lv2
+
 CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -I./vendored -Wall -pedantic
 
 ifdef DEBUG
@@ -35,3 +38,6 @@ test: all
 	LV2_PATH=${PWD}/lv2 valgrind ${VALGRIND_FLAGS} lv2bench https://dfdx.eu/fps-plugins.lv2/eq_match
 	valgrind ${VALGRIND_FLAGS} ./test_eq_match 2048 input.wav output.wav linear_phase_response.wav minimum_phase_response.wav matched.wav
 
+install: all
+	mkdir -p ${INSTALL_DIR}
+	cp -r lv2/fps-plugins.lv2 ${INSTALL_DIR}
