@@ -1,13 +1,18 @@
 @prefix lv2:  <http://lv2plug.in/ns/lv2core#> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix doap: <http://usefulinc.com/ns/doap#> .
+@prefix work:  <http://lv2plug.in/ns/ext/worker#> .
+@prefix urid:  <http://lv2plug.in/ns/ext/urid#> .
 
-<https://dfdx.eu/fps-plugins.lv2/stereo-decorrelation> a lv2:Plugin ;
-  doap:name "stereo spreader (stereo to stereo)";
+<https://dfdx.eu/fps-plugins.lv2/stereo_decorrelation> a lv2:Plugin ;
+  doap:name "stereo_decorrelation";
   doap:license <http://usefulinc.com/doap/licenses/gpl> ;
   doap:description "Random white noise exponential fall-off FIR filters for left and right" ; 
   lv2:binary <stereo_decorrelation.so> ;
   lv2:optionalFeature lv2:hardRTCapable ;
+  lv2:requiredFeature urid:map,
+    work:schedule ;
+  lv2:extensionData work:interface ;
   lv2:port [
     a lv2:AudioPort ;
     a lv2:InputPort ;
@@ -36,36 +41,18 @@
     a lv2:InputPort ;
     a lv2:ControlPort ;
     lv2:index 4 ;
-    lv2:symbol "drywet" ;
-    lv2:name "Dry/Wet";
-    lv2:default 1 ;
-    lv2:minimum 0 ;
-    lv2:maximum 1 ;
+    lv2:symbol "amount" ;
+    lv2:name "Amount (dB)";
+    lv2:default 0 ;
+    lv2:minimum -96 ;
+    lv2:maximum 0 ;
   ] , [
     a lv2:InputPort ;
     a lv2:ControlPort ;
     lv2:index 5 ;
-    lv2:symbol "length" ;
-    lv2:name "Filter length (s)";
-    lv2:default 3 ;
-    lv2:minimum 0 ;
-    lv2:maximum 8 ;
-  ] , [
-    a lv2:InputPort ;
-    a lv2:ControlPort ;
-    lv2:index 6 ;
     lv2:symbol "decay" ;
     lv2:name "Filter decay (s)";
-    lv2:default 3 ;
+    lv2:default 0.01 ;
     lv2:minimum 0 ;
-    lv2:maximum 8 ;
-  ] , [
-    a lv2:InputPort ;
-    a lv2:ControlPort ;
-    lv2:index 7 ;
-    lv2:symbol "seed" ;
-    lv2:name "Random seed";
-    lv2:default 0 ;
-    lv2:minimum 0 ;
-    lv2:maximum 1024 ;
+    lv2:maximum 0.1 ;
   ] .
