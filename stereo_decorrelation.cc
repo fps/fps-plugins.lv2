@@ -14,8 +14,8 @@
 
 #define STEREO_DECORRELATION_URI FPS_PLUGINS_BASE_URI "/stereo_decorrelation"
 
-#define STEREO_DECORRELATION_LOG(x) { std::cerr << "stereo_decorrelation: " << x; }
-// #define STEREO_DECORRELATION_LOG(x) { }
+// #define STEREO_DECORRELATION_LOG(x) { std::cerr << "stereo_decorrelation: " << x; }
+#define STEREO_DECORRELATION_LOG(x) { }
 
 #define STEREO_DECORRELATION_BLOCK_SIZE 32
 
@@ -183,10 +183,10 @@ static void run
         
         while (remaining_samples != 0)
         {
-            STEREO_DECORRELATION_LOG("remaining: " << remaining_samples << "\n")
+            // STEREO_DECORRELATION_LOG("remaining: " << remaining_samples << "\n")
             size_t samples_to_process = (size_t)std::min ((size_t)STEREO_DECORRELATION_BLOCK_SIZE, remaining_samples);
             
-            STEREO_DECORRELATION_LOG("to process: " << samples_to_process << "\n")
+            // STEREO_DECORRELATION_LOG("to process: " << samples_to_process << "\n")
             
             std::copy 
             (

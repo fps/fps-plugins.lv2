@@ -32,10 +32,13 @@ struct stereo_decorrelation
         m_left_response.resize (m_length);
         m_right_response.resize (m_length);
         
+        m_left_response[0] = 0;
+        m_right_response[0] = 0;
+        
         std::mt19937 gen(0); 
         std::normal_distribution<float> d(0, 0.1f);
         
-        for (size_t index = 0; index < m_length; ++index)
+        for (size_t index = 1; index < m_length; ++index)
         {
             float sample = d (gen);
             m_left_response[index] = sample * expf(-(index / decay));
