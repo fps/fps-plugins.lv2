@@ -162,12 +162,17 @@ static void schedule_worker_command (plugin &the_plugin, int c1, int c2 = 0, flo
         the_plugin.m_worker_schedule_buffer[2 + index] = data[index];
     }
 
-    the_plugin.m_worker_schedule.schedule_work
+    LV2_Worker_Status status = the_plugin.m_worker_schedule.schedule_work
     (
         the_plugin.m_worker_schedule.handle,
         (2 + data_size) * sizeof (float),
         &the_plugin.m_worker_schedule_buffer[0]
     );
+    
+    if (status != LV2_WORKER_SUCCESS)
+    {
+        std::cerr << "Failed to schedule work: " << c1 << " " << c2 << "\n;";
+    }
 }
 
 static void run
@@ -345,7 +350,11 @@ static LV2_State_Status save_state
         LV2_STATE_IS_POD
     );
 
-    if (status != LV2_STATE_SUCCESS) return LV2_STATE_ERR_UNKNOWN;
+    if (status != LV2_STATE_SUCCESS) 
+    {
+        std::cerr << "eq_match: Failed to save linear phase response\n";
+        return LV2_STATE_ERR_UNKNOWN;
+    }
 
     status = store
     (
@@ -357,7 +366,11 @@ static LV2_State_Status save_state
         LV2_STATE_IS_POD
     );
 
-    if (status != LV2_STATE_SUCCESS) return LV2_STATE_ERR_UNKNOWN;
+    if (status != LV2_STATE_SUCCESS)
+    {
+        std::cerr << "eq_match: Failed to save minimum phase response\n";
+        return LV2_STATE_ERR_UNKNOWN;
+    }
 
     return LV2_STATE_SUCCESS;
 }
