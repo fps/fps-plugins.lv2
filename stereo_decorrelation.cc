@@ -162,7 +162,9 @@ static void run
 
     float data[2] = { decay, seed };
     
-    if (the_plugin.m_previous_decay != decay && !the_plugin.m_working)
+    const bool working = the_plugin.m_working;
+    
+    if (the_plugin.m_previous_decay != decay && !working)
     {
         the_plugin.m_working = true;
         the_plugin.m_worker_schedule.schedule_work
@@ -173,7 +175,7 @@ static void run
         );
     }
 
-    if (the_plugin.m_previous_seed != seed && !the_plugin.m_working)
+    if (the_plugin.m_previous_seed != seed && !working)
     {
         the_plugin.m_working = true;
         the_plugin.m_worker_schedule.schedule_work
@@ -184,7 +186,7 @@ static void run
         );
     }
     
-    if (the_plugin.m_working)
+    if (working)
     {
         for (size_t index = 0; index < sample_count; ++index)
         {
@@ -236,6 +238,7 @@ static void run
             for (size_t index = 0; index < samples_to_process; ++index)
             {
                 outl[index + processed_samples] = amount_gain_factor * the_plugin.m_output_buffer_left[index] + inl[index + processed_samples];
+                
                 outr[index + processed_samples] = amount_gain_factor * the_plugin.m_output_buffer_right[index] + inr[index + processed_samples];
                 
                 // outl[index] = inl[index];
@@ -246,8 +249,12 @@ static void run
             remaining_samples -= samples_to_process;
         }
     }
-    the_plugin.m_previous_decay = decay;
-    the_plugin.m_previous_seed = seed;
+    
+    if (!working)
+    {
+        the_plugin.m_previous_decay = decay;
+        the_plugin.m_previous_seed = seed;
+    }
 }
 
 
