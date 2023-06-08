@@ -17,7 +17,7 @@
 #define EQ_MATCH_STATE_LINEAR_PHASE_RESPONSE EQ_MATCH_URI "#linear_phase_response"
 #define EQ_MATCH_STATE_MINIMUM_PHASE_RESPONSE EQ_MATCH_URI "#minimal_phase_response"
 
-#define EQ_MATCH_FFT_SIZE 2048
+#define EQ_MATCH_FFT_TIME 0.05
 #define EQ_MATCH_BLOCK_SIZE 32
 
 // #define EQ_MATCH_LOG(x) { std::cerr << x; }
@@ -125,7 +125,7 @@ LV2_Handle instantiate
     if (false == worker_found) return 0;
     if (false == urid_map_found) return 0;
 
-    plugin *instance = new plugin (EQ_MATCH_FFT_SIZE, sample_rate);
+    plugin *instance = new plugin ((size_t)(EQ_MATCH_FFT_TIME * sample_rate), sample_rate);
     instance->m_worker_schedule = worker_schedule;
     instance->m_urid_map = urid_map;
     return (LV2_Handle)instance;
