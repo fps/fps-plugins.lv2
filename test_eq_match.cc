@@ -53,7 +53,7 @@ int main (int argc, char *argv[])
 
     std::cerr << "Calculating spectra...\n";
 
-    eq_match match (FFT_SIZE, input1_info.samplerate);
+    eq_match match (FFT_SIZE);
 
     match.add_frames_to_buffer1 (&input1[0], input1_count);
     match.add_frames_to_buffer2 (&input2[0], input1_count);

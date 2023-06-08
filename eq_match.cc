@@ -16,6 +16,7 @@
 #define EQ_MATCH_STATE_URI EQ_MATCH_URI "#state"
 #define EQ_MATCH_STATE_LINEAR_PHASE_RESPONSE EQ_MATCH_URI "#linear_phase_response"
 #define EQ_MATCH_STATE_MINIMUM_PHASE_RESPONSE EQ_MATCH_URI "#minimal_phase_response"
+#define EQ_MATCH_STATE_SAMPLE_RATE EQ_MATCH_URI "#sample_rate"
 
 #define EQ_MATCH_FFT_TIME 0.05
 #define EQ_MATCH_BLOCK_SIZE 32
@@ -33,8 +34,8 @@ struct plugin_state
     fftconvolver::FFTConvolver m_linear_phase_convolver;
     fftconvolver::FFTConvolver m_minimum_phase_convolver;
 
-    plugin_state (float sample_rate, size_t fft_size) :
-        m_match (sample_rate, fft_size),
+    plugin_state (size_t fft_size) :
+        m_match (fft_size),
         m_previous_analyze1 (false),
         m_previous_analyze2 (false)
     {
@@ -65,7 +66,8 @@ struct plugin
     std::atomic<bool> m_working;
     LV2_Worker_Schedule m_worker_schedule;
     LV2_URID_Map m_urid_map;
-
+    float m_sample_rate;
+    
     std::vector<float *> m_ports;
 
     enum WORKER_COMMAND
@@ -83,10 +85,11 @@ struct plugin
 
     plugin (float sample_rate, size_t fft_size) :
         m_working (false),
-        m_ports (7, 0),
+        m_sample_rate (sample_rate),
+        m_ports (8, 0),
         // see comment above
         m_worker_schedule_buffer (fft_size + 2, 0),
-        m_plugin_state (sample_rate, fft_size)
+        m_plugin_state (fft_size)
     {
 
     }
@@ -125,7 +128,7 @@ LV2_Handle instantiate
     if (false == worker_found) return 0;
     if (false == urid_map_found) return 0;
 
-    plugin *instance = new plugin ((size_t)(EQ_MATCH_FFT_TIME * sample_rate), sample_rate);
+    plugin *instance = new plugin (sample_rate, (size_t)(EQ_MATCH_FFT_TIME * sample_rate));
     instance->m_worker_schedule = worker_schedule;
     instance->m_urid_map = urid_map;
     return (LV2_Handle)instance;
@@ -193,7 +196,8 @@ static void run
     const float &analyze2      = *the_plugin.m_ports[3];
     const float &apply         = *the_plugin.m_ports[4];
     const float &minimum_phase = *the_plugin.m_ports[5];
-    const float &gain          = *the_plugin.m_ports[6];
+    const float &response_gain = *the_plugin.m_ports[6];
+    const float &overall_gain  = *the_plugin.m_ports[7];
 
     const bool &previous_analyze1 = state.m_previous_analyze1;
     const bool &previous_analyze2 = state.m_previous_analyze2;
@@ -294,18 +298,24 @@ static void run
         {
             state.m_linear_phase_convolver.process (in, out, sample_count);
         }
+        
+        const float response_gain_factor = pow(10, response_gain/20);
+        for (size_t index = 0; index < sample_count; ++index)
+        {
+            out[index] *= response_gain_factor;
+        }
     }
     else
     {
         memcpy (out, in, sample_count * sizeof (float));
     }
 
-    const float gain_factor = pow(10, gain/20);
+    const float overall_gain_factor = pow(10, overall_gain/20);
     for (size_t index = 0; index < sample_count; ++index)
     {
-        out[index] *= gain_factor;
+        out[index] *= overall_gain_factor;
     }
-
+    
     state.m_previous_analyze1 = analyze1 > 0;
     state.m_previous_analyze2 = analyze2 > 0;
 }
@@ -334,6 +344,13 @@ static LV2_State_Status save_state
         (
             the_plugin.m_urid_map.handle,
             EQ_MATCH_STATE_MINIMUM_PHASE_RESPONSE
+        );
+
+    LV2_URID sample_rate_urid =
+        the_plugin.m_urid_map.map
+        (
+            the_plugin.m_urid_map.handle,
+            EQ_MATCH_STATE_SAMPLE_RATE
         );
 
     LV2_State_Status status;
@@ -369,6 +386,22 @@ static LV2_State_Status save_state
     if (status != LV2_STATE_SUCCESS)
     {
         std::cerr << "eq_match: Failed to save minimum phase response\n";
+        return LV2_STATE_ERR_UNKNOWN;
+    }
+
+    status = store
+    (
+        handle,
+        sample_rate_urid,
+        &the_plugin.m_sample_rate,
+        sizeof (float),
+        the_plugin.m_urid_map.map (the_plugin.m_urid_map.handle, LV2_ATOM__Float),
+        LV2_STATE_IS_POD
+    );
+        
+    if (status != LV2_STATE_SUCCESS)
+    {
+        std::cerr << "eq_match: Failed to save sample rate\n";
         return LV2_STATE_ERR_UNKNOWN;
     }
 

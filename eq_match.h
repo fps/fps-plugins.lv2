@@ -171,8 +171,6 @@ struct eq_match
     dft m_dft1;
     dft m_dft2;
 
-    float m_sample_rate;
-
     std::vector<float> m_window;
 
     // Buffers to accumulate samples
@@ -192,12 +190,11 @@ struct eq_match
     std::vector<float> m_linear_phase_response;
     std::vector<float> m_minimum_phase_response;
 
-    eq_match (size_t fft_size, float sample_rate) :
+    eq_match (size_t fft_size) :
         m_fft_size (fft_size),
         m_extended_fft_size (fft_size * 4),
         m_dft1 (fft_size),
         m_dft2 (4 * fft_size),
-        m_sample_rate (sample_rate),
         m_window(fft_size, 0.f),
 
         m_spectrum_buffer11 (fft_size),
