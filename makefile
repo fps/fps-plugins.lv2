@@ -14,7 +14,7 @@ FFTCONVOLVER_OBJECTs = ${FFTCONVOLVER_SOURCES:.cpp=.o}
 
 all: plugins test_eq_match
 
-plugins: lv2/fps-plugins.lv2/dynamics.so lv2/fps-plugins.lv2/eq_match.so
+plugins: lv2/fps-plugins.lv2/dynamics.so lv2/fps-plugins.lv2/eq_match.so lv2/fps-plugins.lv2/stereo_decorrelation.so
 
 lv2/fps-plugins.lv2/dynamics.so: dynamics.cc makefile
 	g++ -std=c++20 ${CXX_EXTRA_FLAGS} dynamics.cc -pedantic -Wall -Werror -shared -o lv2/fps-plugins.lv2/dynamics.so
