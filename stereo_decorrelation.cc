@@ -31,6 +31,7 @@ struct plugin
     stereo_decorrelation m_stereo_decorrelation;
 
     float m_previous_decay;
+    float m_previous_seed;
 
     std::vector<float> m_input_buffer_left;
     std::vector<float> m_input_buffer_right;
@@ -43,22 +44,23 @@ struct plugin
     plugin (float sample_rate) :
         m_working (false),
         m_sample_rate (sample_rate),
-        m_ports (6, 0),
+        m_ports (7, 0),
         m_stereo_decorrelation (0.1 * sample_rate),
-        m_previous_decay (0),
+        m_previous_decay (0.01),
+        m_previous_seed (0),
         m_input_buffer_left (STEREO_DECORRELATION_BLOCK_SIZE, 0),
         m_input_buffer_right (STEREO_DECORRELATION_BLOCK_SIZE, 0),
         m_output_buffer_left (STEREO_DECORRELATION_BLOCK_SIZE, 0),
         m_output_buffer_right (STEREO_DECORRELATION_BLOCK_SIZE, 0)
     {
         STEREO_DECORRELATION_LOG("plugin ()\n");
-        init (0.01);
+        init (0.01, 0);
     }
     
-    void init (float decay)
+    void init (float decay, int seed)
     {
         STEREO_DECORRELATION_LOG("plugin::init ()\n");
-        m_stereo_decorrelation.init (m_sample_rate*decay);
+        m_stereo_decorrelation.init (m_sample_rate*decay, seed);
         
         m_left_convolver.init 
         (
@@ -156,18 +158,32 @@ static void run
     // Control eports
     const float &amount        = *the_plugin.m_ports[4];
     const float &decay         = *the_plugin.m_ports[5];
+    const float &seed          = *the_plugin.m_ports[6];
 
+    float data[2] = { decay, seed };
+    
     if (the_plugin.m_previous_decay != decay && !the_plugin.m_working)
     {
         the_plugin.m_working = true;
         the_plugin.m_worker_schedule.schedule_work
         (
             the_plugin.m_worker_schedule.handle,
-            sizeof (float),
-            &decay
+            2 * sizeof (float),
+            &data
         );
     }
 
+    if (the_plugin.m_previous_seed != seed && !the_plugin.m_working)
+    {
+        the_plugin.m_working = true;
+        the_plugin.m_worker_schedule.schedule_work
+        (
+            the_plugin.m_worker_schedule.handle,
+            2 * sizeof (float),
+            &data
+        );
+    }
+    
     if (the_plugin.m_working)
     {
         for (size_t index = 0; index < sample_count; ++index)
@@ -231,6 +247,7 @@ static void run
         }
     }
     the_plugin.m_previous_decay = decay;
+    the_plugin.m_previous_seed = seed;
 }
 
 
@@ -245,19 +262,20 @@ LV2_Worker_Status work
 {
     STEREO_DECORRELATION_LOG("work: " << size << "\n")
 
-    if (size != sizeof (float))
+    if (size != 2 * sizeof (float))
     {
-        std::cerr << "stereo_decorrelation: Bad decay value!\n";
+        std::cerr << "stereo_decorrelation: Bad data!\n";
         return LV2_WORKER_ERR_UNKNOWN;
     }
     
     plugin &the_plugin = *((plugin*)instance);
 
-    float decay = *((float*)data);
+    float decay = ((float*)data)[0];
+    float seed = ((float*)data)[1];
     
     STEREO_DECORRELATION_LOG("decay: " << decay << "\n");
     
-    the_plugin.init (decay);
+    the_plugin.init (decay, seed);
     
     the_plugin.m_working = false;
     return LV2_WORKER_SUCCESS;

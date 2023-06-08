@@ -55,4 +55,13 @@
     lv2:default 0.01 ;
     lv2:minimum 0 ;
     lv2:maximum 0.1 ;
+  ] , [
+    a lv2:InputPort ;
+    a lv2:ControlPort ;
+    lv2:index 6 ;
+    lv2:symbol "seed" ;
+    lv2:name "Random seed";
+    lv2:default 0 ;
+    lv2:minimum 0 ;
+    lv2:maximum 100 ;
   ] .
