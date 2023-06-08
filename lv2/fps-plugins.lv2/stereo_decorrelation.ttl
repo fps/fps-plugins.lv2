@@ -43,7 +43,7 @@
     lv2:index 4 ;
     lv2:symbol "amount" ;
     lv2:name "Amount (dB)";
-    lv2:default 0 ;
+    lv2:default -18 ;
     lv2:minimum -96 ;
     lv2:maximum 0 ;
   ] , [
