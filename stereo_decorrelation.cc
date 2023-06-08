@@ -46,7 +46,7 @@ struct plugin
         m_sample_rate (sample_rate),
         m_ports (7, 0),
         m_stereo_decorrelation (0.1 * sample_rate),
-        m_previous_decay (0.01),
+        m_previous_decay (0),
         m_previous_seed (0),
         m_input_buffer_left (STEREO_DECORRELATION_BLOCK_SIZE, 0),
         m_input_buffer_right (STEREO_DECORRELATION_BLOCK_SIZE, 0),
@@ -57,8 +57,11 @@ struct plugin
         init (0.01, 0);
     }
     
-    void init (float decay, int seed)
+    void init (float decay, float seed)
     {
+        m_previous_decay = decay;
+        m_previous_seed = seed;
+        
         STEREO_DECORRELATION_LOG("plugin::init ()\n");
         m_stereo_decorrelation.init (m_sample_rate*decay, seed);
         
@@ -75,6 +78,8 @@ struct plugin
             &m_stereo_decorrelation.m_right_response[0], 
             m_stereo_decorrelation.m_left_response.size ()
         );
+        
+        m_working = false;
     }
 };
 
@@ -162,98 +167,89 @@ static void run
 
     float data[2] = { decay, seed };
     
-    const bool working = the_plugin.m_working;
     
-    if (the_plugin.m_previous_decay != decay && !working)
-    {
-        the_plugin.m_working = true;
-        the_plugin.m_worker_schedule.schedule_work
-        (
-            the_plugin.m_worker_schedule.handle,
-            2 * sizeof (float),
-            &data
-        );
-    }
-
-    if (the_plugin.m_previous_seed != seed && !working)
-    {
-        the_plugin.m_working = true;
-        the_plugin.m_worker_schedule.schedule_work
-        (
-            the_plugin.m_worker_schedule.handle,
-            2 * sizeof (float),
-            &data
-        );
-    }
-    
-    if (working)
+    if (the_plugin.m_working) 
     {
         for (size_t index = 0; index < sample_count; ++index)
         {
             outl[index] = 0;
             outr[index] = 0;
         }
-    }
-    else
-    {
-        size_t processed_samples = 0;
-        size_t remaining_samples = sample_count;
-        
-        while (remaining_samples != 0)
-        {
-            // STEREO_DECORRELATION_LOG("remaining: " << remaining_samples << "\n")
-            size_t samples_to_process = (size_t)std::min ((size_t)STEREO_DECORRELATION_BLOCK_SIZE, remaining_samples);
-            
-            // STEREO_DECORRELATION_LOG("to process: " << samples_to_process << "\n")
-            
-            std::copy 
-            (
-                inl + processed_samples, 
-                inl + processed_samples + samples_to_process, 
-                the_plugin.m_input_buffer_left.begin ()
-            );
-
-            std::copy 
-            (
-                inr + processed_samples, 
-                inr + processed_samples + samples_to_process, 
-                the_plugin.m_input_buffer_right.begin ()
-            );
-
-            the_plugin.m_left_convolver.process 
-            (
-                &the_plugin.m_input_buffer_left[0], 
-                &the_plugin.m_output_buffer_left[0], 
-                samples_to_process
-            );
-            
-            the_plugin.m_right_convolver.process 
-            (
-                &the_plugin.m_input_buffer_right[0], 
-                &the_plugin.m_output_buffer_right[0], 
-                samples_to_process
-            );
-            
-            const float amount_gain_factor = pow(10, amount/20);
-            for (size_t index = 0; index < samples_to_process; ++index)
-            {
-                outl[index + processed_samples] = amount_gain_factor * the_plugin.m_output_buffer_left[index] + inl[index + processed_samples];
-                
-                outr[index + processed_samples] = amount_gain_factor * the_plugin.m_output_buffer_right[index] + inr[index + processed_samples];
-                
-                // outl[index] = inl[index];
-                // outr[index] = inr[index];
-            }
-            
-            processed_samples += samples_to_process;
-            remaining_samples -= samples_to_process;
-        }
+        return;
     }
     
-    if (!working)
+    if (the_plugin.m_previous_decay != decay || the_plugin.m_previous_seed != seed)
     {
-        the_plugin.m_previous_decay = decay;
-        the_plugin.m_previous_seed = seed;
+        STEREO_DECORRELATION_LOG ("scheduling work\n");
+        
+        the_plugin.m_working = true;
+        
+        the_plugin.m_worker_schedule.schedule_work
+        (
+            the_plugin.m_worker_schedule.handle,
+            2 * sizeof (float),
+            &data
+        );
+        
+        for (size_t index = 0; index < sample_count; ++index)
+        {
+            outl[index] = 0;
+            outr[index] = 0;
+        }
+        return;
+    }
+    
+    // STEREO_DECORRELATION_LOG("not working\n");
+    
+    size_t processed_samples = 0;
+    size_t remaining_samples = sample_count;
+    
+    while (remaining_samples != 0)
+    {
+        // STEREO_DECORRELATION_LOG("remaining: " << remaining_samples << "\n")
+        
+        size_t samples_to_process = (size_t)std::min ((size_t)STEREO_DECORRELATION_BLOCK_SIZE, remaining_samples);
+        
+        // STEREO_DECORRELATION_LOG("to process: " << samples_to_process << "\n")
+        
+        std::copy 
+        (
+            inl + processed_samples, 
+            inl + processed_samples + samples_to_process, 
+            the_plugin.m_input_buffer_left.begin ()
+        );
+
+        std::copy 
+        (
+            inr + processed_samples, 
+            inr + processed_samples + samples_to_process, 
+            the_plugin.m_input_buffer_right.begin ()
+        );
+
+        the_plugin.m_left_convolver.process 
+        (
+            &the_plugin.m_input_buffer_left[0], 
+            &the_plugin.m_output_buffer_left[0], 
+            samples_to_process
+        );
+        
+        the_plugin.m_right_convolver.process 
+        (
+            &the_plugin.m_input_buffer_right[0], 
+            &the_plugin.m_output_buffer_right[0], 
+            samples_to_process
+        );
+        
+        const float amount_gain_factor = pow(10, amount/20);
+        for (size_t index = 0; index < samples_to_process; ++index)
+        {
+            outl[index + processed_samples] = amount_gain_factor * the_plugin.m_output_buffer_left[index] + inl[index + processed_samples];
+            
+            outr[index + processed_samples] = amount_gain_factor * the_plugin.m_output_buffer_right[index] + inr[index + processed_samples];
+        }
+        
+        processed_samples += samples_to_process;
+        remaining_samples -= samples_to_process;
     }
 }
 
@@ -280,11 +276,10 @@ LV2_Worker_Status work
     float decay = ((float*)data)[0];
     float seed = ((float*)data)[1];
     
-    STEREO_DECORRELATION_LOG("decay: " << decay << "\n");
+    STEREO_DECORRELATION_LOG("decay: " << decay << " seed: " << seed << "\n");
     
     the_plugin.init (decay, seed);
     
-    the_plugin.m_working = false;
     return LV2_WORKER_SUCCESS;
 }
 

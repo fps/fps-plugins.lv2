@@ -22,7 +22,9 @@ struct stereo_decorrelation
     std::vector<float> m_right_response;
     
     stereo_decorrelation (size_t length) :
-        m_length (length)
+        m_length (length),
+        m_left_response (length, 0),
+        m_right_response (length, 0)
     {
         init (1, 0);
     }
@@ -36,7 +38,7 @@ struct stereo_decorrelation
         m_right_response[0] = 0;
         
         std::mt19937 gen(seed); 
-        std::normal_distribution<float> d(0, 0.1f);
+        std::normal_distribution<float> d(0, 0.5f);
         
         for (size_t index = 1; index < m_length; ++index)
         {

@@ -3,8 +3,8 @@
 PREFIX ?= /usr
 INSTALL_DIR ?= ${PREFIX}/lib/lv2
 
+# CXX_EXTRA_FLAGS ?= -O1 -g -fsanitize=address -march=native -mcpu=native -I./vendored -Wall -pedantic
 CXX_EXTRA_FLAGS ?= -O3 -march=native -mcpu=native -I./vendored -Wall -pedantic
-
 ifdef DEBUG
 CXX_EXTRA_FLAGS += -g3 -DDEBUG
 endif
