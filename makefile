@@ -4,7 +4,8 @@ PREFIX ?= /usr/local
 INSTALL_DIR ?= ${PREFIX}/lib/lv2
 
 # CXX_EXTRA_FLAGS ?= -O1 -g -fsanitize=address -march=native -mcpu=native -I./vendored -Wall -pedantic
-CXX_EXTRA_FLAGS ?= -O3 -march=native -mtune=native -I./vendored -Wall -pedantic `pkg-config lv2 sndfile fftw3f --cflags --libs`
+CXX_EXTRA_FLAGS ?= -O3 -march=native -mtune=native -I./vendored -Wall -pedantic `pkg-config lv2 sndfile fftw3f --cflags`
+LDFLAGS ?= -fPIC `pkg-config lv2 sndfile fftw3f --libs`
 
 ifdef DEBUG
 CXX_EXTRA_FLAGS += -g3 -DDEBUG
@@ -19,16 +20,16 @@ all: plugins test_eq_match
 plugins: lv2/fps-plugins.lv2/dynamics.so lv2/fps-plugins.lv2/eq_match.so lv2/fps-plugins.lv2/stereo_decorrelation.so
 
 lv2/fps-plugins.lv2/dynamics.so: dynamics.cc makefile
-	g++ -std=c++20 ${CXX_EXTRA_FLAGS} dynamics.cc -shared -o lv2/fps-plugins.lv2/dynamics.so -fPIC
+	g++ -std=c++20 ${CXX_EXTRA_FLAGS} dynamics.cc -shared -o lv2/fps-plugins.lv2/dynamics.so ${LDFLAGS}
 
 lv2/fps-plugins.lv2/eq_match.so: eq_match.cc eq_match.h makefile
-	g++ -std=c++20 ${CXX_EXTRA_FLAGS} eq_match.cc ${FFTCONVOLVER_SOURCES} -shared -o lv2/fps-plugins.lv2/eq_match.so -fPIC -lfftw3f -lm
+	g++ -std=c++20 ${CXX_EXTRA_FLAGS} eq_match.cc ${FFTCONVOLVER_SOURCES} -shared -o lv2/fps-plugins.lv2/eq_match.so ${LDFLAGS}
 
 test_eq_match: test_eq_match.cc eq_match.h makefile
-	g++ -std=c++20 ${CXX_EXTRA_FLAGS} test_eq_match.cc ${FFTCONVOLVER_SOURCES} -o test_eq_match -lfftw3f -lm -lsndfile
+	g++ -std=c++20 ${CXX_EXTRA_FLAGS} test_eq_match.cc ${FFTCONVOLVER_SOURCES} -o test_eq_match ${LDFLAGS}
 
 lv2/fps-plugins.lv2/stereo_decorrelation.so: stereo_decorrelation.cc stereo_decorrelation.h makefile
-	g++ -std=c++20 ${CXX_EXTRA_FLAGS} stereo_decorrelation.cc ${FFTCONVOLVER_SOURCES} -shared -o lv2/fps-plugins.lv2/stereo_decorrelation.so -fPIC -lm
+	g++ -std=c++20 ${CXX_EXTRA_FLAGS} stereo_decorrelation.cc ${FFTCONVOLVER_SOURCES} -shared -o lv2/fps-plugins.lv2/stereo_decorrelation.so ${LDFLAGS}
 	
 test: all
 	LV2_PATH=${PWD}/lv2 lv2info https://dfdx.eu/fps-plugins.lv2/relative_dynamics
