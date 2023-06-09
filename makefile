@@ -39,5 +39,5 @@ test: all
 	valgrind ${VALGRIND_FLAGS} ./test_eq_match 2048 input.wav output.wav linear_phase_response.wav minimum_phase_response.wav matched.wav
 
 install: all
-	mkdir -p ${DESTDIR}${INSTALL_DIR}
+	mkdir -p ${DESTDIR}/${INSTALL_DIR}
 	cp -r lv2/fps-plugins.lv2 ${DESTDIR}/${INSTALL_DIR}
