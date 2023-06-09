@@ -61,7 +61,7 @@
     lv2:index 6 ;
     lv2:symbol "seed" ;
     lv2:name "Random seed";
-    lv2:default 0 ;
+    lv2:default 11.5 ;
     lv2:minimum 0 ;
     lv2:maximum 100 ;
   ] .
