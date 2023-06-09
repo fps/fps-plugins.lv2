@@ -10,7 +10,7 @@ You first need some dependencies:
 - libsndfile
 - lv2
 
-Then just run `make` followed by `make install`
+Then just run `make` followed by `make install` or `INSTALL_DIR=$HOME/.lv2 make install` or some variant thereof.
 
 # Plugins
 
