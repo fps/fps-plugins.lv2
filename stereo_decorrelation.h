@@ -34,17 +34,36 @@ struct stereo_decorrelation
         m_left_response.resize (m_length);
         m_right_response.resize (m_length);
         
-        m_left_response[0] = 0;
-        m_right_response[0] = 0;
-        
-        std::mt19937 gen(seed); 
+        std::mt19937 gen(seed);
         std::normal_distribution<float> d(0, 0.5f);
         
-        for (size_t index = 1; index < m_length; ++index)
+        float dc = 0;
+        for (size_t index = 0; index < m_length; ++index)
         {
             float sample = d (gen);
             m_left_response[index] = sample * expf(-(index / decay));
-            m_right_response[index] = -sample * expf(-(index / decay));
+            dc += m_left_response[index];
+        }
+
+        // remove DC
+        float power = 0;
+        for (size_t index = 0; index < m_length; ++index)
+        {
+            m_left_response[index] -= dc / m_length;
+            power += powf(m_left_response[index], 2);
+        }
+        power = sqrtf(power);
+
+        // normalize to unit power
+        for (size_t index = 0; index < m_length; ++index)
+        {
+            m_left_response[index] /= power;
+        }
+
+        // invert right channel
+        for (size_t index = 0; index < m_length; ++index)
+        {
+            m_right_response[index] = -m_left_response[index];
         }
     }
 };
