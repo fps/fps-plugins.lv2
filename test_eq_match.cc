@@ -48,6 +48,12 @@ int main (int argc, char *argv[])
     sf_count_t input1_read = sf_read_float (input1_file, &input1[0], input1_count);
     sf_count_t input2_read = sf_read_float (input2_file, &input2[0], input2_count);
 
+    if (input1_read == 0 || input2_read == 0)
+    {
+        std::cerr << "Failed to read frames\n";
+        return EXIT_FAILURE;
+    }
+
     sf_close (input1_file);
     sf_close (input2_file);
 
