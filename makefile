@@ -1,6 +1,6 @@
 .PHONY: all
 
-PREFIX ?= /usr
+PREFIX ?= /usr/local
 INSTALL_DIR ?= ${PREFIX}/lib/lv2
 
 # CXX_EXTRA_FLAGS ?= -O1 -g -fsanitize=address -march=native -mcpu=native -I./vendored -Wall -pedantic
