@@ -34,6 +34,10 @@ A stereo processor that generates an exponentially decaying white noise FIR and 
 
 - This plugin interrupts the audio processing on parameter changes.
 
+### Examples
+
+https://github.com/fps/fps-plugins.lv2/raw/master/stereo_decorrelation_example.ogg
+
 # Author
 
 Florian Paul Schmidt (mista.tapas@gmx.net)
