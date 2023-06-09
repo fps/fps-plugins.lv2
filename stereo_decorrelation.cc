@@ -44,7 +44,7 @@ struct plugin
     plugin (float sample_rate) :
         m_working (false),
         m_sample_rate (sample_rate),
-        m_ports (7, 0),
+        m_ports (8, 0),
         m_stereo_decorrelation (0.1 * sample_rate),
         m_previous_decay (0),
         m_previous_seed (0),
@@ -164,6 +164,7 @@ static void run
     const float &amount        = *the_plugin.m_ports[4];
     const float &decay         = *the_plugin.m_ports[5];
     const float &seed          = *the_plugin.m_ports[6];
+    const float &dry_amount    = *the_plugin.m_ports[7];
 
     float data[2] = { decay, seed };
     
@@ -241,11 +242,12 @@ static void run
         );
         
         const float amount_gain_factor = pow(10, amount/20);
+        const float dry_amount_gain_factor = pow(10, dry_amount/20);
         for (size_t index = 0; index < samples_to_process; ++index)
         {
-            outl[index + processed_samples] = amount_gain_factor * the_plugin.m_output_buffer_left[index] + inl[index + processed_samples];
+            outl[index + processed_samples] = amount_gain_factor * the_plugin.m_output_buffer_left[index] + dry_amount_gain_factor * inl[index + processed_samples];
             
-            outr[index + processed_samples] = amount_gain_factor * the_plugin.m_output_buffer_right[index] + inr[index + processed_samples];
+            outr[index + processed_samples] = amount_gain_factor * the_plugin.m_output_buffer_right[index] + dry_amount_gain_factor * inr[index + processed_samples];
         }
         
         processed_samples += samples_to_process;

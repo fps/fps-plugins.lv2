@@ -20,16 +20,16 @@ all: plugins test_eq_match
 plugins: lv2/fps-plugins.lv2/dynamics.so lv2/fps-plugins.lv2/eq_match.so lv2/fps-plugins.lv2/stereo_decorrelation.so
 
 lv2/fps-plugins.lv2/dynamics.so: dynamics.cc makefile
-	g++ -std=c++20 ${CXX_EXTRA_FLAGS} dynamics.cc -shared -o lv2/fps-plugins.lv2/dynamics.so
+	g++ -std=c++20 ${CXX_EXTRA_FLAGS} dynamics.cc -shared -o lv2/fps-plugins.lv2/dynamics.so -fPIC
 
 lv2/fps-plugins.lv2/eq_match.so: eq_match.cc eq_match.h makefile
-	g++ -std=c++20 ${CXX_EXTRA_FLAGS} eq_match.cc ${FFTCONVOLVER_SOURCES} -shared -o lv2/fps-plugins.lv2/eq_match.so -lfftw3f -lm
+	g++ -std=c++20 ${CXX_EXTRA_FLAGS} eq_match.cc ${FFTCONVOLVER_SOURCES} -shared -o lv2/fps-plugins.lv2/eq_match.so -fPIC -lfftw3f -lm
 
 test_eq_match: test_eq_match.cc eq_match.h makefile
 	g++ -std=c++20 ${CXX_EXTRA_FLAGS} test_eq_match.cc ${FFTCONVOLVER_SOURCES} -o test_eq_match -lfftw3f -lm -lsndfile
 
 lv2/fps-plugins.lv2/stereo_decorrelation.so: stereo_decorrelation.cc stereo_decorrelation.h makefile
-	g++ -std=c++20 ${CXX_EXTRA_FLAGS} stereo_decorrelation.cc ${FFTCONVOLVER_SOURCES} -shared -o lv2/fps-plugins.lv2/stereo_decorrelation.so -lm
+	g++ -std=c++20 ${CXX_EXTRA_FLAGS} stereo_decorrelation.cc ${FFTCONVOLVER_SOURCES} -shared -o lv2/fps-plugins.lv2/stereo_decorrelation.so -fPIC -lm
 	
 test: all
 	LV2_PATH=${PWD}/lv2 lv2info https://dfdx.eu/fps-plugins.lv2/relative_dynamics
