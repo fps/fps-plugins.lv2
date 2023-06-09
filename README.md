@@ -2,6 +2,16 @@
 
 A collection of LV2 plugins that probably noone besides me is interested in.
 
+# Building
+
+You first need some dependencies:
+
+- fftw3 (the floating point variant libfftw3f)
+- libsndfile
+- lv2
+
+Then just run `make` followed by `make install`
+
 # Plugins
 
 ## relative_dynamics
