@@ -54,7 +54,7 @@
     lv2:name "Filter decay (s)";
     lv2:default 0.01 ;
     lv2:minimum 0 ;
-    lv2:maximum 0.02 ;
+    lv2:maximum 0.05 ;
   ] , [
     a lv2:InputPort ;
     a lv2:ControlPort ;
