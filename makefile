@@ -4,7 +4,7 @@ PREFIX ?= /usr/local
 INSTALL_DIR ?= ${PREFIX}/lib/lv2
 
 # CXX_EXTRA_FLAGS ?= -O1 -g -fsanitize=address -march=native -mcpu=native -I./vendored -Wall -pedantic
-CXX_EXTRA_FLAGS ?= -O3 -march=native -mtune=native -I./vendored -Wall -pedantic `pkg-config lv2 sndfile fftw3f --cflags`
+CXX_EXTRA_FLAGS ?= -O3 -I./vendored -Wall -pedantic `pkg-config lv2 sndfile fftw3f --cflags`
 LDFLAGS ?= -fPIC `pkg-config lv2 sndfile fftw3f --libs`
 
 ifdef DEBUG

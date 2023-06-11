@@ -124,25 +124,24 @@ struct eq_match
         DBG_COMPLEX_VECTOR("spectrum1:", m_average_spectrum1.m, m_fft_size)
         DBG_COMPLEX_VECTOR("spectrum2:", m_average_spectrum2.m, m_fft_size)
 
-        // Calculate powers of real spectra...
-        float power1 = 0;
+        float max_amplitude1 = 0;
         for (size_t index = 0; index < m_fft_size; ++index)
         {
-            power1 += m_average_spectrum1.m[index][0] * m_average_spectrum1.m[index][0];
+            // power1 += m_average_spectrum1.m[index][0] * m_average_spectrum1.m[index][0];
+            if (m_average_spectrum1.m[index][0] > max_amplitude1) max_amplitude1 = m_average_spectrum1.m[index][0];
         }
-        power1 /= m_fft_size;
-
-        float power2 = 0;
+        
+        float max_amplitude2 = 0;
         for (size_t index = 0; index < m_fft_size; ++index)
         {
-            power2 += m_average_spectrum2.m[index][0] * m_average_spectrum2.m[index][0];
+            // power2 += m_average_spectrum2.m[index][0] * m_average_spectrum2.m[index][0];
+            if (m_average_spectrum2.m[index][0] > max_amplitude2) max_amplitude2 = m_average_spectrum2.m[index][0];
         }
-        power2 /= m_fft_size;
 
         dft_buffer spectrum_ratio (m_fft_size);
         for (size_t index = 0; index < m_fft_size; ++index) {
             spectrum_ratio.m[index][0] =
-              (m_average_spectrum2.m[index][0] / power2) / (m_average_spectrum1.m[index][0] / power1);
+              (m_average_spectrum2.m[index][0] / max_amplitude1) / (m_average_spectrum1.m[index][0] / max_amplitude2);
 
             spectrum_ratio.m[index][1] = 0;
         }
