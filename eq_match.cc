@@ -311,13 +311,6 @@ static void run
                 in + processed_samples + samples_to_process, 
                 state.m_input_buffer.begin ()
             );
-            
-#if 0
-            if (samples_to_process < EQ_MATCH_BLOCK_SIZE)
-            {
-                std::fill (state.m_input_buffer.begin () + samples_to_process, state.m_input_buffer.end (), 0);
-            }
-#endif
 
             if (minimum_phase > 0)
             {
