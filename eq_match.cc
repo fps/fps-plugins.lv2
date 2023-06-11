@@ -28,6 +28,9 @@ struct plugin_state
 {
     eq_match m_match;
 
+    std::vector<float> m_input_buffer;
+    std::vector<float> m_output_buffer;
+    
     bool m_previous_analyze1;
     bool m_previous_analyze2;
 
@@ -36,6 +39,8 @@ struct plugin_state
 
     plugin_state (size_t fft_size) :
         m_match (fft_size),
+        m_input_buffer (fft_size),
+        m_output_buffer (fft_size),
         m_previous_analyze1 (false),
         m_previous_analyze2 (false)
     {
@@ -50,6 +55,9 @@ struct plugin_state
 
     void init ()
     {
+        std::fill (m_input_buffer.begin (), m_input_buffer.end (), 0);
+        std::fill (m_output_buffer.begin (), m_output_buffer.end (), 0);
+
         m_linear_phase_convolver.reset ();
         m_minimum_phase_convolver.reset ();
 
@@ -197,7 +205,7 @@ static void run
     const float &apply         = *the_plugin.m_ports[4];
     const float &minimum_phase = *the_plugin.m_ports[5];
     const float &response_gain = *the_plugin.m_ports[6];
-    const float &overall_gain  = *the_plugin.m_ports[7];
+    const float &dry_wet       = *the_plugin.m_ports[7];
 
     const bool &previous_analyze1 = state.m_previous_analyze1;
     const bool &previous_analyze2 = state.m_previous_analyze2;
@@ -290,30 +298,50 @@ static void run
 
     if (apply > 0 && !the_plugin.m_working)
     {
-        if (minimum_phase > 0)
-        {
-            state.m_minimum_phase_convolver.process (in, out, sample_count);
-        }
-        else
-        {
-            state.m_linear_phase_convolver.process (in, out, sample_count);
-        }
+        size_t remaining_samples = sample_count;
+        size_t processed_samples = 0;
         
-        const float response_gain_factor = pow(10, response_gain/20);
-        for (size_t index = 0; index < sample_count; ++index)
+        while (remaining_samples != 0)
         {
-            out[index] *= response_gain_factor;
+            size_t samples_to_process = (size_t)std::min ((size_t)EQ_MATCH_BLOCK_SIZE, remaining_samples);
+            
+            std::copy 
+            (
+                in + processed_samples, 
+                in + processed_samples + samples_to_process, 
+                state.m_input_buffer.begin ()
+            );
+            
+#if 0
+            if (samples_to_process < EQ_MATCH_BLOCK_SIZE)
+            {
+                std::fill (state.m_input_buffer.begin () + samples_to_process, state.m_input_buffer.end (), 0);
+            }
+#endif
+
+            if (minimum_phase > 0)
+            {
+                state.m_minimum_phase_convolver.process (&state.m_input_buffer[0], &state.m_output_buffer[0], samples_to_process);
+            }
+            else
+            {
+                state.m_linear_phase_convolver.process (&state.m_input_buffer[0], &state.m_output_buffer[0], samples_to_process);
+            }
+            
+            const float response_gain_factor = pow(10, response_gain/20);
+            for (size_t index = 0; index < samples_to_process; ++index)
+            {
+                out[index + processed_samples] = dry_wet * (response_gain_factor * state.m_output_buffer[index]) + (1.f - dry_wet) * state.m_input_buffer[index] ;
+            }
+            
+            remaining_samples -= samples_to_process;
+            processed_samples += samples_to_process;
         }
     }
     else
     {
-        memcpy (out, in, sample_count * sizeof (float));
-    }
-
-    const float overall_gain_factor = pow(10, overall_gain/20);
-    for (size_t index = 0; index < sample_count; ++index)
-    {
-        out[index] *= overall_gain_factor;
+        memcpy (out, in, sizeof (float) * sample_count);
+        // std::copy (in, out, sample_count);
     }
     
     state.m_previous_analyze1 = analyze1 > 0;
