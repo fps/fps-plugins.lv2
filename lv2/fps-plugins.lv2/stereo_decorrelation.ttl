@@ -41,15 +41,54 @@
     a lv2:InputPort ;
     a lv2:ControlPort ;
     lv2:index 4 ;
-    lv2:symbol "amount" ;
-    lv2:name "Amount (dB)";
-    lv2:default -3 ;
+    lv2:symbol "dry_amount" ;
+    lv2:name "Dry amount (dB)";
+    lv2:default 0 ;
     lv2:minimum -36 ;
     lv2:maximum 18 ;
   ] , [
     a lv2:InputPort ;
     a lv2:ControlPort ;
     lv2:index 5 ;
+    lv2:symbol "amount" ;
+    lv2:name "Wet Amount (dB)";
+    lv2:default -3 ;
+    lv2:minimum -36 ;
+    lv2:maximum 18 ;
+  ] , [
+    a lv2:InputPort ;
+    a lv2:ControlPort ;
+    lv2:index 6 ;
+    lv2:symbol "method" ;
+    lv2:name "Method";
+    lv2:default 0 ;
+    lv2:minimum 0 ;
+    lv2:maximum 1 ;
+    lv2:portProperty lv2:integer ;
+  ] , [
+    a lv2:InputPort ;
+    a lv2:ControlPort ;
+    lv2:index 6 ;
+    lv2:symbol "whiten" ;
+    lv2:name "Whiten spectrum";
+    lv2:default 1 ;
+    lv2:minimum 0 ;
+    lv2:maximum 1 ;
+    lv2:portProperty lv2:integer ;
+  ] , [
+    a lv2:InputPort ;
+    a lv2:ControlPort ;
+    lv2:index 7 ;
+    lv2:symbol "sum_to_mono" ;
+    lv2:name "Sum to mono";
+    lv2:default 0 ;
+    lv2:minimum 0 ;
+    lv2:maximum 1 ;
+    lv2:portProperty lv2:toggled ;
+  ] , [
+    a lv2:InputPort ;
+    a lv2:ControlPort ;
+    lv2:index 8 ;
     lv2:symbol "decay" ;
     lv2:name "Filter decay (s)";
     lv2:default 0.01 ;
@@ -58,19 +97,21 @@
   ] , [
     a lv2:InputPort ;
     a lv2:ControlPort ;
-    lv2:index 6 ;
-    lv2:symbol "seed" ;
-    lv2:name "Random seed";
-    lv2:default 11.5 ;
+    lv2:index 9 ;
+    lv2:symbol "seed1" ;
+    lv2:name "Random seed left";
+    lv2:default 11 ;
     lv2:minimum 0 ;
     lv2:maximum 100 ;
+    lv2:portProperty lv2:integer ;
   ] , [
     a lv2:InputPort ;
     a lv2:ControlPort ;
-    lv2:index 7 ;
-    lv2:symbol "dry_amount" ;
-    lv2:name "Dry amount (dB)";
-    lv2:default 0 ;
-    lv2:minimum -36 ;
-    lv2:maximum 18 ;
+    lv2:index 10 ;
+    lv2:symbol "seed2" ;
+    lv2:name "Random seed right";
+    lv2:default 12 ;
+    lv2:minimum 0 ;
+    lv2:maximum 100 ;
+    lv2:portProperty lv2:integer ;
   ] .

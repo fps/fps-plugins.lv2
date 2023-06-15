@@ -30,8 +30,12 @@ struct plugin
 
     stereo_decorrelation m_stereo_decorrelation;
 
+    int m_previous_method;
+    bool m_previous_whiten;
+    bool m_previous_sum_to_mono;
     float m_previous_decay;
-    float m_previous_seed;
+    int m_previous_seed_left;
+    int m_previous_seed_right;
 
     std::vector<float> m_input_buffer_left;
     std::vector<float> m_input_buffer_right;
@@ -44,24 +48,38 @@ struct plugin
     plugin (float sample_rate) :
         m_working (false),
         m_sample_rate (sample_rate),
-        m_ports (8, 0),
+        m_ports (11, 0),
         m_stereo_decorrelation (0.1 * sample_rate),
+
+        m_previous_method (0),
+        m_previous_whiten (true),
+        m_previous_sum_to_mono (false),
         m_previous_decay (0),
-        m_previous_seed (0),
+        m_previous_seed_left (11),
+        m_previous_seed_right (12),
+
         m_input_buffer_left (STEREO_DECORRELATION_BLOCK_SIZE, 0),
         m_input_buffer_right (STEREO_DECORRELATION_BLOCK_SIZE, 0),
         m_output_buffer_left (STEREO_DECORRELATION_BLOCK_SIZE, 0),
         m_output_buffer_right (STEREO_DECORRELATION_BLOCK_SIZE, 0)
     {
         STEREO_DECORRELATION_LOG("plugin ()\n");
-        init (0.01, 0);
+        init (m_previous_method, m_previous_whiten, m_previous_sum_to_mono, m_previous_decay, m_previous_seed_left, m_previous_seed_right);
     }
     
-    void init (float decay, float seed)
+    void init
+    (
+        int method, bool whiten, bool sum_to_mono,
+        float decay, int seed_left, int seed_right
+    )
     {
+        m_previous_method = method;
+        m_previous_whiten = whiten;
+        m_previous_sum_to_mono = sum_to_mono;
         m_previous_decay = decay;
-        m_previous_seed = seed;
-        
+        m_previous_seed_left = seed_left;
+        m_previous_seed_right = seed_right;
+
         STEREO_DECORRELATION_LOG("plugin::init ()\n");
         m_stereo_decorrelation.init (m_sample_rate*decay, seed);
         
@@ -162,9 +180,12 @@ static void run
 
     // Control eports
     const float &amount        = *the_plugin.m_ports[4];
-    const float &decay         = *the_plugin.m_ports[5];
-    const float &seed          = *the_plugin.m_ports[6];
-    const float &dry_amount    = *the_plugin.m_ports[7];
+    const float &dry_amount    = *the_plugin.m_ports[5];
+    const float &method        = *the_plugin.m_ports[6];
+    const bool sum_to_mono     = *the_plugin.m_ports[7] > 0;
+    const float &decay         = *the_plugin.m_ports[8];
+    const int seed1            = *the_plugin.m_ports[9];
+    const int seed2            = *the_plugin.m_ports[10];
 
     float data[2] = { decay, seed };
     
@@ -179,7 +200,11 @@ static void run
         return;
     }
     
-    if (the_plugin.m_previous_decay != decay || the_plugin.m_previous_seed != seed)
+    if
+    (
+        the_plugin.m_previous_decay != decay ||
+        the_plugin.m_previous_seed != seed
+    )
     {
         STEREO_DECORRELATION_LOG ("scheduling work\n");
         
