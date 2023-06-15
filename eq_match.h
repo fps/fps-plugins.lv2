@@ -158,44 +158,7 @@ struct eq_match
             m_linear_phase_response[(index + (m_fft_size/2)) % m_fft_size] = ifft_spectrum_ratio.m[index][0];
         }
 
-        DBG_REAL_VECTOR("linear_phase:", m_linear_phase_response, m_fft_size)
-
-        dft_buffer extended_linear_phase_response (m_extended_fft_size);
-        for (size_t index = 0; index < m_extended_fft_size; ++index)
-        {
-            if (index < m_fft_size)
-            {
-                extended_linear_phase_response.m[index][0] =
-                    m_linear_phase_response[index];
-            }
-            else
-            {
-                extended_linear_phase_response.m[index][0] = 0;
-            }
-            extended_linear_phase_response.m[index][1] = 0;
-        }
-
-        dft_buffer extended_spectrum (m_extended_fft_size);
-        m_dft2.fft (extended_linear_phase_response, extended_spectrum);
-
-        for (size_t index = 0; index < m_extended_fft_size; ++index)
-        {
-            extended_spectrum.m[index][0] = sqrtf(powf(extended_spectrum.m[index][0], 2) + powf(extended_spectrum.m[index][1], 2));
-            extended_spectrum.m[index][1] = 0;
-        }
-
-        dft_buffer minimum_phase_spectrum (m_extended_fft_size);
-
-        create_minimum_phase_spectrum (extended_spectrum, minimum_phase_spectrum);
-
-        // 3 -> 4
-        dft_buffer minimum_phase_response (m_extended_fft_size);
-        m_dft2.ifft (minimum_phase_spectrum, minimum_phase_response);
-
-        for (size_t index = 0; index < m_fft_size; ++index)
-        {
-            m_minimum_phase_response[index] = minimum_phase_response.m[index][0];
-        }
+        create_minimum_phase_response (m_linear_phase_response, m_minimum_phase_response);
 
         DBG_REAL_VECTOR("linear phase response:", m_linear_phase_response, m_fft_size)
         

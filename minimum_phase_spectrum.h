@@ -6,7 +6,11 @@
 
 #include "dft.h"
 
-void create_minimum_phase_spectrum (const dft_buffer &spectrum_in, dft_buffer &spectrum_out)
+void create_minimum_phase_spectrum
+(
+    const dft_buffer &spectrum_in,
+    dft_buffer &spectrum_out
+)
 {
     assert (spectrum_in.m_size == spectrum_out.m_size);
 
@@ -70,8 +74,57 @@ void create_minimum_phase_spectrum (const dft_buffer &spectrum_in, dft_buffer &s
     DBG_COMPLEX_VECTOR("exp:", spectrum_out.m, fft_size)
 }
 
-void create_minimum_phase_response (const std::vector<float> &in, std::vector<float> out)
+void create_minimum_phase_response
+(
+    const std::vector<float> &linear_phase_response_in,
+    std::vector<float> minimum_phase_response_out
+)
 {
+    assert (linear_phase_response_in.size () == minimum_phase_response_out.size ());
+
+    const size_t fft_size = linear_phase_response_in.size ();
+    const size_t extended_fft_size = 4 * fft_size;
+
+    dft the_dft (extended_fft_size);
+
+    DBG_REAL_VECTOR("linear_phase:", linear_phase_response_in, fft_size)
+
+    dft_buffer extended_linear_phase_response (extended_fft_size);
+    for (size_t index = 0; index < extended_fft_size; ++index)
+    {
+        if (index < fft_size)
+        {
+            extended_linear_phase_response.m[index][0] =
+                linear_phase_response_in[index];
+        }
+        else
+        {
+            extended_linear_phase_response.m[index][0] = 0;
+        }
+        extended_linear_phase_response.m[index][1] = 0;
+    }
+
+    dft_buffer extended_spectrum (extended_fft_size);
+    the_dft.fft (extended_linear_phase_response, extended_spectrum);
+
+    for (size_t index = 0; index < extended_fft_size; ++index)
+    {
+        extended_spectrum.m[index][0] = sqrtf(powf(extended_spectrum.m[index][0], 2) + powf(extended_spectrum.m[index][1], 2));
+        extended_spectrum.m[index][1] = 0;
+    }
+
+    dft_buffer minimum_phase_spectrum (extended_fft_size);
+
+    create_minimum_phase_spectrum (extended_spectrum, minimum_phase_spectrum);
+
+    // 3 -> 4
+    dft_buffer full_minimum_phase_response (extended_fft_size);
+    the_dft.ifft (minimum_phase_spectrum, full_minimum_phase_response);
+
+    for (size_t index = 0; index < fft_size; ++index)
+    {
+        minimum_phase_response_out[index] = full_minimum_phase_response.m[index][0];
+    }
 
 }
 
