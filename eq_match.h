@@ -9,6 +9,7 @@
 #include <iostream>
 
 #include "dft.h"
+#include "minimum_phase_spectrum.h"
 
 /**
  * This whole class is not realtime safe!
@@ -183,67 +184,17 @@ struct eq_match
             extended_spectrum.m[index][1] = 0;
         }
 
-        // exp(fft(fold(ifft(log(s)))))
+        dft_buffer minimum_phase_spectrum (m_extended_fft_size);
 
-        dft_buffer the_log (m_extended_fft_size);
-        for (size_t index = 0; index < m_extended_fft_size; ++index) {
-            the_log.m[index][0] = log(extended_spectrum.m[index][0]);
-            the_log.m[index][1] = 0;
-        }
-
-        DBG_COMPLEX_VECTOR("log:", the_log.m, m_extended_fft_size)
+        create_minimum_phase_spectrum (extended_spectrum, minimum_phase_spectrum);
 
         // 3 -> 4
-        dft_buffer ifft_log (m_extended_fft_size);
-        m_dft2.ifft (the_log, ifft_log);
-
-        DBG_COMPLEX_VECTOR("ifft:", ifft_log.m, m_extended_fft_size)
-
-        dft_buffer folded (m_extended_fft_size);
-        // fold
-        for (size_t index = 0; index < m_extended_fft_size; ++index) {
-            if (index == 0) {
-                folded.m[index][0] = ifft_log.m[index][0];
-                folded.m[index][1] = 0;
-            }
-            if (index > 0 && index < m_extended_fft_size / 2) {
-                folded.m[index][0] = ifft_log.m[index][0];
-                folded.m[index][1] = 0;
-                folded.m[index][0] += ifft_log.m[m_extended_fft_size- index][0];
-            }
-            if (index == m_extended_fft_size / 2) {
-                folded.m[index][0] = ifft_log.m[index][0];
-                folded.m[index][1] = 0;
-            }
-            if (index > m_extended_fft_size / 2) {
-                folded.m[index][0] = 0;
-                folded.m[index][1] = 0;
-            }
-        }
-
-        DBG_COMPLEX_VECTOR("fold:", folded.m, m_extended_fft_size)
-
-        // 3 -> 5
-        dft_buffer fft_folded (m_extended_fft_size);
-        m_dft2.fft (folded, fft_folded);
-
-        dft_buffer the_exp (m_extended_fft_size);
-        for (size_t index = 0; index < m_extended_fft_size; ++index) {
-            std::complex<float> c(fft_folded.m[index][0], fft_folded.m[index][1]);
-            std::complex<float> c2 = std::exp(c);
-            the_exp.m[index][0] = std::real(c2);
-            the_exp.m[index][1] = std::imag(c2);
-        }
-
-        DBG_COMPLEX_VECTOR("exp:", the_exp.m, m_extended_fft_size)
-
-        // 3 -> 4
-        dft_buffer ifft_exp (m_extended_fft_size);
-        m_dft2.ifft (the_exp, ifft_exp);
+        dft_buffer minimum_phase_response (m_extended_fft_size);
+        m_dft2.ifft (minimum_phase_spectrum, minimum_phase_response);
 
         for (size_t index = 0; index < m_fft_size; ++index)
         {
-            m_minimum_phase_response[index] = ifft_exp.m[index][0];
+            m_minimum_phase_response[index] = minimum_phase_response.m[index][0];
         }
 
         DBG_REAL_VECTOR("linear phase response:", m_linear_phase_response, m_fft_size)
