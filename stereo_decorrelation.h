@@ -1,5 +1,5 @@
-#ifndef EQ_MATCH_PLUGINS_EQ_MATCH_HH
-#define EQ_MATCH_PLUGINS_EQ_MATCH_HH
+#ifndef EQ_MATCH_PLUGINS_DECORRELATION_HH
+#define EQ_MATCH_PLUGINS_DECORRELATION_HH
 
 #include <string.h>
 #include <vector>
@@ -13,6 +13,50 @@
  * This whole class is not realtime safe!
  */
 
+struct exponential_white_noise_decorrelator
+{
+    size_t m_length;
+    std::vector<float> m_response;
+
+    exponential_white_noise_decorrelator (size_t length) :
+        m_length (length),
+        m_response (length, 0)
+    {
+
+    }
+
+    void init (bool whiten, float decay, int random_seed)
+    {
+        std::mt19937 gen(random_seed);
+        std::normal_distribution<float> d(0, 1.0f);
+
+        float dc = 0;
+        for (size_t index = 0; index < m_length; ++index)
+        {
+            float sample = d (gen);
+            m_response[index] = sample * expf(-index / decay);
+            dc += sample;
+        }
+
+        float power = 0;
+        for (size_t index = 0; index < m_length; ++index)
+        {
+            m_response[index] -= dc / m_length;
+            power += m_response[index] * m_response[index];
+        }
+        power = sqrtf (power);
+
+        for (size_t index = 0; index < m_length; ++index)
+        {
+            m_response[index] /= power;
+        }
+
+        if (whiten)
+        {
+
+        }
+    }
+}
 
 struct stereo_decorrelation
 {

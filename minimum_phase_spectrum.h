@@ -13,6 +13,7 @@ void create_minimum_phase_spectrum
 )
 {
     assert (spectrum_in.m_size == spectrum_out.m_size);
+    assert (spectrum_in.m_size > 8);
 
     const size_t fft_size = spectrum_in.m_size;
 
@@ -81,6 +82,7 @@ void create_minimum_phase_response
 )
 {
     assert (linear_phase_response_in.size () == minimum_phase_response_out.size ());
+    assert (linear_phase_response_in.size () > 8);
 
     const size_t fft_size = linear_phase_response_in.size ();
     const size_t extended_fft_size = 4 * fft_size;
