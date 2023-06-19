@@ -73,6 +73,8 @@ struct plugin
         float decay, int seed_left, int seed_right
     )
     {
+        m_working = true;
+
         m_previous_method = method;
         m_previous_whiten = whiten;
         m_previous_sum_to_mono = sum_to_mono;
@@ -81,7 +83,7 @@ struct plugin
         m_previous_seed_right = seed_right;
 
         STEREO_DECORRELATION_LOG("plugin::init ()\n");
-        m_stereo_decorrelation.init (m_sample_rate*decay, seed);
+        m_stereo_decorrelation.init (m_sample_rate*decay, seed_left, seed_right, whiten, sum_to_mono);
         
         m_left_convolver.init 
         (
@@ -96,8 +98,6 @@ struct plugin
             &m_stereo_decorrelation.m_right_response[0], 
             m_stereo_decorrelation.m_left_response.size ()
         );
-        
-        m_working = false;
     }
 };
 
@@ -182,14 +182,13 @@ static void run
     const float &amount        = *the_plugin.m_ports[4];
     const float &dry_amount    = *the_plugin.m_ports[5];
     const float &method        = *the_plugin.m_ports[6];
-    const bool sum_to_mono     = *the_plugin.m_ports[7] > 0;
+    const float &sum_to_mono   = *the_plugin.m_ports[7];
     const float &decay         = *the_plugin.m_ports[8];
-    const int seed1            = *the_plugin.m_ports[9];
-    const int seed2            = *the_plugin.m_ports[10];
+    const float &seed_left     = *the_plugin.m_ports[9];
+    const float &seed_right    = *the_plugin.m_ports[10];
 
-    float data[2] = { decay, seed };
-    
-    
+    float data[5] = { decay, seed_left, seed_right, whiten, sum_to_mono };
+
     if (the_plugin.m_working) 
     {
         for (size_t index = 0; index < sample_count; ++index)
@@ -203,17 +202,19 @@ static void run
     if
     (
         the_plugin.m_previous_decay != decay ||
-        the_plugin.m_previous_seed != seed
+        the_plugin.m_previous_seed_left != seed_left ||
+        the_plugin.m_previous_seed_right != seed_right ||
+        the_plugin.m_pre
     )
     {
         STEREO_DECORRELATION_LOG ("scheduling work\n");
         
         the_plugin.m_working = true;
-        
+
         the_plugin.m_worker_schedule.schedule_work
         (
             the_plugin.m_worker_schedule.handle,
-            2 * sizeof (float),
+            5 * sizeof (float),
             &data
         );
         
@@ -307,6 +308,8 @@ LV2_Worker_Status work
     
     the_plugin.init (decay, seed);
     
+    the_plugin.m_working = false;
+
     return LV2_WORKER_SUCCESS;
 }
 

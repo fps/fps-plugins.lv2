@@ -7,7 +7,67 @@
 #include <cmath>
 #include <iostream>
 
+#include "minimum_phase_spectrum.h"
 #include "dft.h"
+
+void whiten_by_minimum_phase_spectrum
+(
+    const std::vector<float> &in,
+    std::vector<float> &out
+)
+{
+    assert (in.size () == out.size ());
+    assert (in.size () >= 8);
+
+    size_t fft_size = in.size ();
+
+    dft the_dft (fft_size);
+    dft_buffer buffer1 (fft_size);
+    dft_buffer buffer2 (fft_size);
+    dft_buffer buffer3 (fft_size);
+
+    for (size_t index = 0; index < fft_size; ++index)
+    {
+        buffer1.m[index][0] = in[index];
+        buffer1.m[index][1] = 0;
+    }
+
+    the_dft.fft (buffer1, buffer2);
+
+    for (size_t index = 0; index < fft_size; ++index)
+    {
+        buffer2.m[index][0] = sqrt(pow(buffer2.m[index][0], 2) + pow(buffer2.m[index][1], 2));
+        buffer2.m[index][1] = 0;
+    }
+
+    create_minimum_phase_spectrum (buffer2, buffer3);
+
+    for (size_t index = 0; index < fft_size; ++index)
+    {
+        buffer1.m[index][0] = in[index];
+        buffer1.m[index][1] = 0;
+    }
+
+    the_dft.fft (buffer1, buffer2);
+
+    for (size_t index = 0; index < fft_size; ++index)
+    {
+        std::complex c1 (buffer2.m[index][0], buffer2.m[index][1]);
+        std::complex c2 (buffer3.m[index][0], buffer3.m[index][1]);
+
+        std::complex ratio = c1 / c2;
+
+        buffer1.m[index][0] = std::real (ratio);
+        buffer1.m[index][1] = std::imag (ratio);
+    }
+
+    the_dft.ifft (buffer1, buffer2);
+
+    for (size_t index = 0; index < fft_size; ++index)
+    {
+        out[index] = buffer2.m[index][0];
+    }
+}
 
 /**
  * This whole class is not realtime safe!
@@ -53,10 +113,10 @@ struct exponential_white_noise_decorrelator
 
         if (whiten)
         {
-
+            whiten_by_minimum_phase_spectrum (m_response, m_response);
         }
     }
-}
+};
 
 struct stereo_decorrelation
 {
