@@ -4,23 +4,22 @@
 
 int main (int argc, char *argv[])
 {
-    std::vector<float> data (1000, 0);
-    create_exponential_white_noise_burst (0, 100, false, data);
+    if (argc < 5)
+    {
+        std::cout << "usage: test_white_noise_burst length seed decay whiten\n";
+        return EXIT_FAILURE;
+    }
 
-    std::cout << "non-whitened: ";
+    size_t length = atoi (argv[1]);
+    int seed = atoi (argv[2]);
+    float decay = atof (argv[3]);
+    bool whiten = atoi (argv[4]) != 0;
+
+    std::vector<float> data (length, 0);
+    create_exponential_white_noise_burst (seed, decay, whiten, data);
+
     for (size_t index = 0; index < data.size (); ++index)
     {
-        std::cout << data[index] << " ";
+        std::cout << index << " " << data[index] << "\n";
     }
-    std::cout << "\n";
-
-    create_exponential_white_noise_burst (0, 100, true, data);
-
-    std::cout << "whitened: ";
-    for (size_t index = 0; index < data.size (); ++index)
-    {
-        std::cout << data[index] << " ";
-    }
-    std::cout << "\n";
-
 }

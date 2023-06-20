@@ -83,99 +83,67 @@ void create_exponential_white_noise_burst
     std::mt19937 gen(random_seed);
     std::normal_distribution<float> d(0, 1.0f);
 
-    float dc = 0;
     for (size_t index = 0; index < length; ++index)
     {
         float sample = d (gen);
         response_out[index] = sample * exp(-(index / decay));
-        dc += sample;
-    }
-
-    float power = 0;
-    for (size_t index = 0; index < length; ++index)
-    {
-        // response_out[index] -= dc / length;
-        power += response_out[index] * response_out[index];
-    }
-    power = sqrtf (power);
-
-    for (size_t index = 0; index < length; ++index)
-    {
-        // response_out[index] /= power;
     }
 
     if (whiten)
     {
         whiten_by_minimum_phase_spectrum (response_out, response_out);
     }
+
+    float dc = 0;
+    for (size_t index = 0; index < length; ++index)
+    {
+        dc += response_out[index];
+    }
+    dc /= length;
+
+    float power = 0;
+    for (size_t index = 0; index < length; ++index)
+    {
+        // response_out[index] -= dc;
+        power += response_out[index] * response_out[index];
+    }
+    power = sqrtf (power);
+
+    for (size_t index = 0; index < length; ++index)
+    {
+        response_out[index] /= power;
+    }
 }
 
-struct stereo_decorrelation
+void create_exponential_white_noise_burst_stereo_pair
+(
+    const int random_seed_left,
+    const int random_seed_right,
+    const float decay,
+    const bool whiten,
+    const bool sum_to_mono,
+    std::vector<float> &response_left_out,
+    std::vector<float> &response_right_out
+)
 {
-    size_t m_length;
+    assert (response_left_out.size () == response_right_out.size ());
+    const size_t length = response_left_out.size ();
+    assert (length >= 8);
 
-    std::vector<float> m_left_response;
-    std::vector<float> m_right_response;
-    
-    stereo_decorrelation (size_t length) :
-        m_length (length),
-        m_left_response (length, 0),
-        m_right_response (length, 0)
+    create_exponential_white_noise_burst (random_seed_left, decay, whiten, response_left_out);
+
+    if (sum_to_mono)
     {
-        init (1, 11, 12, true, false);
-    }
-
-    void init (float decay, int seed1, int seed2, bool whitening, bool sum_to_mono)
-    {
-        m_left_response.resize (m_length);
-        m_right_response.resize (m_length);
-        
-        std::mt19937 gen1(seed1);
-        std::mt19937 gen2(seed2);
-
-        std::normal_distribution<float> d(0, 0.5f);
-        
-        float dc1 = 0;
-        float dc2 = 0;
-        for (size_t index = 0; index < m_length; ++index)
+        for (size_t index = 0; index < length; ++index)
         {
-            float sample1 = d (gen1);
-            float sample2 = d (gen2);
-            m_left_response[index] = sample1 * expf(-(index / decay));
-            dc1 += m_left_response[index];
-            m_right_response[index] = sample2 * expf(-(index / decay));
-            dc2 += m_right_response[index];
-        }
-
-        // remove DC
-        float power1 = 0;
-        float power2 = 0;
-        for (size_t index = 0; index < m_length; ++index)
-        {
-            m_left_response[index] -= dc1 / m_length;
-            power1 += powf(m_left_response[index], 2);
-            m_right_response[index] -= dc1 / m_length;
-            power1 += powf(m_right_response[index], 2);
-        }
-        power1 = sqrtf(power1);
-        power2 = sqrtf(power2);
-
-        // normalize to unit power
-        for (size_t index = 0; index < m_length; ++index)
-        {
-            m_left_response[index] /= power1;
-            m_right_response[index] /= power2;
-        }
-
-        if (sum_to_mono)
-        {
-            // invert right channel
-            for (size_t index = 0; index < m_length; ++index)
-            {
-                m_right_response[index] = -m_left_response[index];
-            }
+            response_right_out[index] = -response_left_out[index];
         }
     }
-};
+    else
+    {
+        create_exponential_white_noise_burst (random_seed_right, decay, whiten, response_right_out);
+    }
+}
+
 
 #endif

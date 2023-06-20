@@ -14,10 +14,41 @@
 
 #define STEREO_DECORRELATION_URI FPS_PLUGINS_BASE_URI "/stereo_decorrelation"
 
-// #define STEREO_DECORRELATION_LOG(x) { std::cerr << "stereo_decorrelation: " << x; }
-#define STEREO_DECORRELATION_LOG(x) { }
+#define STEREO_DECORRELATION_LOG(x) { std::cerr << "stereo_decorrelation: " << x; }
+// #define STEREO_DECORRELATION_LOG(x) { }
 
 #define STEREO_DECORRELATION_BLOCK_SIZE 32
+#define STEREO_DECORRELATION_FILTER_LENGTH 2048
+
+struct params
+{
+    float decay;
+    bool whiten;
+    bool sum_to_mono;
+    int seed_left;
+    int seed_right;
+#if 0
+    params () :
+        decay (0),
+        whiten (false),
+        sum_to_mono (false),
+        seed_left (0),
+        seed_right (0)
+    {
+
+    }
+#endif
+
+    bool operator== (const params& other)
+    {
+        return
+            other.decay == decay &&
+            other.whiten == whiten &&
+            other.sum_to_mono == sum_to_mono &&
+            other.seed_left == seed_left &&
+            other.seed_right == seed_right;
+    }
+};
 
 struct plugin
 {
@@ -28,14 +59,10 @@ struct plugin
     
     std::vector<float *> m_ports;
 
-    stereo_decorrelation m_stereo_decorrelation;
+    params m_previous_params;
 
-    int m_previous_method;
-    bool m_previous_whiten;
-    bool m_previous_sum_to_mono;
-    float m_previous_decay;
-    int m_previous_seed_left;
-    int m_previous_seed_right;
+    std::vector<float> m_response_left;
+    std::vector<float> m_response_right;
 
     std::vector<float> m_input_buffer_left;
     std::vector<float> m_input_buffer_right;
@@ -49,14 +76,9 @@ struct plugin
         m_working (false),
         m_sample_rate (sample_rate),
         m_ports (11, 0),
-        m_stereo_decorrelation (0.1 * sample_rate),
 
-        m_previous_method (0),
-        m_previous_whiten (true),
-        m_previous_sum_to_mono (false),
-        m_previous_decay (0),
-        m_previous_seed_left (11),
-        m_previous_seed_right (12),
+        m_response_left (STEREO_DECORRELATION_FILTER_LENGTH, 0),
+        m_response_right (STEREO_DECORRELATION_FILTER_LENGTH, 0),
 
         m_input_buffer_left (STEREO_DECORRELATION_BLOCK_SIZE, 0),
         m_input_buffer_right (STEREO_DECORRELATION_BLOCK_SIZE, 0),
@@ -64,39 +86,39 @@ struct plugin
         m_output_buffer_right (STEREO_DECORRELATION_BLOCK_SIZE, 0)
     {
         STEREO_DECORRELATION_LOG("plugin ()\n");
-        init (m_previous_method, m_previous_whiten, m_previous_sum_to_mono, m_previous_decay, m_previous_seed_left, m_previous_seed_right);
     }
     
     void init
     (
-        int method, bool whiten, bool sum_to_mono,
-        float decay, int seed_left, int seed_right
+        const params& p
     )
     {
-        m_working = true;
-
-        m_previous_method = method;
-        m_previous_whiten = whiten;
-        m_previous_sum_to_mono = sum_to_mono;
-        m_previous_decay = decay;
-        m_previous_seed_left = seed_left;
-        m_previous_seed_right = seed_right;
+        m_previous_params = p;
 
         STEREO_DECORRELATION_LOG("plugin::init ()\n");
-        m_stereo_decorrelation.init (m_sample_rate*decay, seed_left, seed_right, whiten, sum_to_mono);
-        
-        m_left_convolver.init 
+        create_exponential_white_noise_burst_stereo_pair
+        (
+            p.seed_left,
+            p.seed_right,
+            p.decay,
+            p.whiten,
+            p.sum_to_mono,
+            m_response_left,
+            m_response_right
+        );
+
+        m_left_convolver.init
         (
             STEREO_DECORRELATION_BLOCK_SIZE, 
-            &m_stereo_decorrelation.m_left_response[0], 
-            m_stereo_decorrelation.m_left_response.size ()
+            &m_response_left[0],
+            m_response_left.size ()
         );
         
         m_right_convolver.init 
         (
             STEREO_DECORRELATION_BLOCK_SIZE, 
-            &m_stereo_decorrelation.m_right_response[0], 
-            m_stereo_decorrelation.m_left_response.size ()
+            &m_response_right[0],
+            m_response_right.size ()
         );
     }
 };
@@ -179,17 +201,19 @@ static void run
     float       *outr          =  the_plugin.m_ports[3];
 
     // Control eports
-    const float &amount        = *the_plugin.m_ports[4];
-    const float &dry_amount    = *the_plugin.m_ports[5];
-    const float &method        = *the_plugin.m_ports[6];
-    const float &sum_to_mono   = *the_plugin.m_ports[7];
-    const float &decay         = *the_plugin.m_ports[8];
-    const float &seed_left     = *the_plugin.m_ports[9];
-    const float &seed_right    = *the_plugin.m_ports[10];
+    const float &dry_amount    = *the_plugin.m_ports[4];
+    const float &wet_amount    = *the_plugin.m_ports[5];
 
-    float data[5] = { decay, seed_left, seed_right, whiten, sum_to_mono };
+    // filter params
+    params p = {
+        .decay = *the_plugin.m_ports[6],
+        .whiten = (*the_plugin.m_ports[7]) != 0,
+        .sum_to_mono = (*the_plugin.m_ports[8]) != 0,
+        .seed_left = (int)*the_plugin.m_ports[9],
+        .seed_right = (int)*the_plugin.m_ports[10],
+    };
 
-    if (the_plugin.m_working) 
+    if (the_plugin.m_working)
     {
         for (size_t index = 0; index < sample_count; ++index)
         {
@@ -201,10 +225,7 @@ static void run
     
     if
     (
-        the_plugin.m_previous_decay != decay ||
-        the_plugin.m_previous_seed_left != seed_left ||
-        the_plugin.m_previous_seed_right != seed_right ||
-        the_plugin.m_pre
+        the_plugin.m_previous_params != p
     )
     {
         STEREO_DECORRELATION_LOG ("scheduling work\n");
@@ -214,8 +235,8 @@ static void run
         the_plugin.m_worker_schedule.schedule_work
         (
             the_plugin.m_worker_schedule.handle,
-            5 * sizeof (float),
-            &data
+            sizeof (p),
+            &p
         );
         
         for (size_t index = 0; index < sample_count; ++index)
@@ -267,13 +288,14 @@ static void run
             samples_to_process
         );
         
-        const float amount_gain_factor = pow(10, amount/20);
-        const float dry_amount_gain_factor = pow(10, dry_amount/20);
+        const float wet_amount_gain_factor = powf(10.f, wet_amount/20.f);
+        const float dry_amount_gain_factor = powf(10.f, dry_amount/20.f);
+
         for (size_t index = 0; index < samples_to_process; ++index)
         {
-            outl[index + processed_samples] = amount_gain_factor * the_plugin.m_output_buffer_left[index] + dry_amount_gain_factor * inl[index + processed_samples];
+            outl[index + processed_samples] = wet_amount_gain_factor * the_plugin.m_output_buffer_left[index] + dry_amount_gain_factor * inl[index + processed_samples];
             
-            outr[index + processed_samples] = amount_gain_factor * the_plugin.m_output_buffer_right[index] + dry_amount_gain_factor * inr[index + processed_samples];
+            outr[index + processed_samples] = wet_amount_gain_factor * the_plugin.m_output_buffer_right[index] + dry_amount_gain_factor * inr[index + processed_samples];
         }
         
         processed_samples += samples_to_process;
@@ -293,7 +315,7 @@ LV2_Worker_Status work
 {
     STEREO_DECORRELATION_LOG("work: " << size << "\n")
 
-    if (size != 2 * sizeof (float))
+    if (size != sizeof (params))
     {
         std::cerr << "stereo_decorrelation: Bad data!\n";
         return LV2_WORKER_ERR_UNKNOWN;
@@ -301,12 +323,9 @@ LV2_Worker_Status work
     
     plugin &the_plugin = *((plugin*)instance);
 
-    float decay = ((float*)data)[0];
-    float seed = ((float*)data)[1];
-    
-    STEREO_DECORRELATION_LOG("decay: " << decay << " seed: " << seed << "\n");
-    
-    the_plugin.init (decay, seed);
+    params p = *((params*)data);
+
+    the_plugin.init (p);
     
     the_plugin.m_working = false;
 

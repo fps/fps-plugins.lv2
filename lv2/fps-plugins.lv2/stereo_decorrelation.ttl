@@ -59,28 +59,17 @@
     a lv2:InputPort ;
     a lv2:ControlPort ;
     lv2:index 6 ;
-    lv2:symbol "method" ;
-    lv2:name "Method";
-    lv2:default 0 ;
-    lv2:minimum 0 ;
-    lv2:maximum 1 ;
-    lv2:portProperty lv2:integer ;
-  ] , [
-    a lv2:InputPort ;
-    a lv2:ControlPort ;
-    lv2:index 6 ;
-    lv2:symbol "whiten" ;
-    lv2:name "Whiten spectrum";
-    lv2:default 1 ;
-    lv2:minimum 0 ;
-    lv2:maximum 1 ;
-    lv2:portProperty lv2:integer ;
+    lv2:symbol "decay" ;
+    lv2:name "Decay";
+    lv2:default 100 ;
+    lv2:minimum 1 ;
+    lv2:maximum 256 ;
   ] , [
     a lv2:InputPort ;
     a lv2:ControlPort ;
     lv2:index 7 ;
-    lv2:symbol "sum_to_mono" ;
-    lv2:name "Sum to mono";
+    lv2:symbol "whiten" ;
+    lv2:name "Whiten spectrum";
     lv2:default 0 ;
     lv2:minimum 0 ;
     lv2:maximum 1 ;
@@ -89,11 +78,12 @@
     a lv2:InputPort ;
     a lv2:ControlPort ;
     lv2:index 8 ;
-    lv2:symbol "decay" ;
-    lv2:name "Filter decay (s)";
-    lv2:default 0.01 ;
+    lv2:symbol "sum_to_mono" ;
+    lv2:name "Mono compatible";
+    lv2:default 0 ;
     lv2:minimum 0 ;
-    lv2:maximum 0.05 ;
+    lv2:maximum 1 ;
+    lv2:portProperty lv2:toggled ;
   ] , [
     a lv2:InputPort ;
     a lv2:ControlPort ;
