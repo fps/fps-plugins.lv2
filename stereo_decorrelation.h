@@ -69,54 +69,46 @@ void whiten_by_minimum_phase_spectrum
     }
 }
 
-/**
- * This whole class is not realtime safe!
- */
-
-struct exponential_white_noise_decorrelator
+void create_exponential_white_noise_burst
+(
+    const int random_seed,
+    const float decay,
+    const bool whiten,
+    std::vector<float> &response_out
+)
 {
-    size_t m_length;
-    std::vector<float> m_response;
+    const size_t length = response_out.size ();
+    assert (length >= 8);
 
-    exponential_white_noise_decorrelator (size_t length) :
-        m_length (length),
-        m_response (length, 0)
+    std::mt19937 gen(random_seed);
+    std::normal_distribution<float> d(0, 1.0f);
+
+    float dc = 0;
+    for (size_t index = 0; index < length; ++index)
     {
-
+        float sample = d (gen);
+        response_out[index] = sample * exp(-(index / decay));
+        dc += sample;
     }
 
-    void init (bool whiten, float decay, int random_seed)
+    float power = 0;
+    for (size_t index = 0; index < length; ++index)
     {
-        std::mt19937 gen(random_seed);
-        std::normal_distribution<float> d(0, 1.0f);
-
-        float dc = 0;
-        for (size_t index = 0; index < m_length; ++index)
-        {
-            float sample = d (gen);
-            m_response[index] = sample * expf(-index / decay);
-            dc += sample;
-        }
-
-        float power = 0;
-        for (size_t index = 0; index < m_length; ++index)
-        {
-            m_response[index] -= dc / m_length;
-            power += m_response[index] * m_response[index];
-        }
-        power = sqrtf (power);
-
-        for (size_t index = 0; index < m_length; ++index)
-        {
-            m_response[index] /= power;
-        }
-
-        if (whiten)
-        {
-            whiten_by_minimum_phase_spectrum (m_response, m_response);
-        }
+        // response_out[index] -= dc / length;
+        power += response_out[index] * response_out[index];
     }
-};
+    power = sqrtf (power);
+
+    for (size_t index = 0; index < length; ++index)
+    {
+        // response_out[index] /= power;
+    }
+
+    if (whiten)
+    {
+        whiten_by_minimum_phase_spectrum (response_out, response_out);
+    }
+}
 
 struct stereo_decorrelation
 {
