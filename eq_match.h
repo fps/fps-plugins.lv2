@@ -25,6 +25,7 @@
  *         m_minimum_phase_response (which is minimum phase)
  */
 
+#define EQ_MATCH_MINIMUM_AMPLITUDE 0.0000001
 
 struct eq_match
 {
@@ -128,6 +129,10 @@ struct eq_match
         float max_amplitude1 = 0;
         for (size_t index = 0; index < m_fft_size; ++index)
         {
+            if (m_average_spectrum1.m[index][0] < EQ_MATCH_MINIMUM_AMPLITUDE)
+            {
+                m_average_spectrum1.m[index][0] = EQ_MATCH_MINIMUM_AMPLITUDE;
+            }
             // power1 += m_average_spectrum1.m[index][0] * m_average_spectrum1.m[index][0];
             if (m_average_spectrum1.m[index][0] > max_amplitude1) max_amplitude1 = m_average_spectrum1.m[index][0];
         }
@@ -135,6 +140,10 @@ struct eq_match
         float max_amplitude2 = 0;
         for (size_t index = 0; index < m_fft_size; ++index)
         {
+            if (m_average_spectrum2.m[index][0] < EQ_MATCH_MINIMUM_AMPLITUDE)
+            {
+                m_average_spectrum2.m[index][0] = EQ_MATCH_MINIMUM_AMPLITUDE;
+            }
             // power2 += m_average_spectrum2.m[index][0] * m_average_spectrum2.m[index][0];
             if (m_average_spectrum2.m[index][0] > max_amplitude2) max_amplitude2 = m_average_spectrum2.m[index][0];
         }
