@@ -43,8 +43,8 @@
     lv2:index 4 ;
     lv2:symbol "dry_amount" ;
     lv2:name "Dry amount (dB)";
-    lv2:default 0 ;
-    lv2:minimum -36 ;
+    lv2:default -72 ;
+    lv2:minimum -72 ;
     lv2:maximum 18 ;
   ] , [
     a lv2:InputPort ;
@@ -52,8 +52,8 @@
     lv2:index 5 ;
     lv2:symbol "amount" ;
     lv2:name "Wet Amount (dB)";
-    lv2:default -3 ;
-    lv2:minimum -36 ;
+    lv2:default 0 ;
+    lv2:minimum -72 ;
     lv2:maximum 18 ;
   ] , [
     a lv2:InputPort ;

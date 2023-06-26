@@ -42,12 +42,6 @@ void whiten_by_minimum_phase_spectrum
 
     create_minimum_phase_spectrum (buffer2, buffer3);
 
-    for (size_t index = 0; index < fft_size; ++index)
-    {
-        buffer1.m[index][0] = in[index];
-        buffer1.m[index][1] = 0;
-    }
-
     the_dft.fft (buffer1, buffer2);
 
     for (size_t index = 0; index < fft_size; ++index)
